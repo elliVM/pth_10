@@ -45,13 +45,12 @@
  */
 package com.teragrep.pth10.steps.teragrep.bloomfilter;
 
-import com.google.gson.Gson;
-import com.google.gson.JsonObject;
+import com.teragrep.pth10.steps.teragrep.bloomfilter.factory.FilterFieldsJsonObjectListFactory;
+import com.teragrep.pth10.steps.teragrep.bloomfilter.factory.FilterOptionValues;
 import com.typesafe.config.Config;
 import org.apache.spark.util.sketch.BloomFilter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.sparkproject.guava.reflect.TypeToken;
 
 import java.io.Serializable;
 import java.util.*;
@@ -60,10 +59,14 @@ public final class FilterTypes implements Serializable {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(FilterTypes.class);
 
-    private final Config config;
+    private final List<FilterOptionValues> filterValuesList;
 
     public FilterTypes(Config config) {
-        this.config = config;
+        this(new FilterFieldsJsonObjectListFactory(config).configured());
+    }
+
+    public FilterTypes(List<FilterOptionValues> filterValuesList) {
+        this.filterValuesList = filterValuesList;
     }
 
     /**
@@ -75,22 +78,14 @@ public final class FilterTypes implements Serializable {
      */
     public SortedMap<Long, Double> sortedMap() {
         final SortedMap<Long, Double> sizesMapFromJson = new TreeMap<>();
-        final Gson gson = new Gson();
-        final List<JsonObject> jsonArray = gson.fromJson(sizesJsonString(), new TypeToken<List<JsonObject>>() {
-        }.getType());
-        for (final JsonObject object : jsonArray) {
-            if (object.has("expected") && object.has("fpp")) {
-                final Long expectedNumOfItems = Long.parseLong(object.get("expected").toString());
-                final Double fpp = Double.parseDouble(object.get("fpp").toString());
-                if (sizesMapFromJson.containsKey(expectedNumOfItems)) {
-                    LOGGER.error("Duplicate value of expected number of items value: <[{}]>", expectedNumOfItems);
-                    throw new RuntimeException("Duplicate entry expected num of items");
-                }
-                sizesMapFromJson.put(expectedNumOfItems, fpp);
+        for (final FilterOptionValues values : filterValuesList) {
+            final Long expectedNumOfItems = values.expected();
+            final Double fpp = values.fpp();
+            if (sizesMapFromJson.containsKey(expectedNumOfItems)) {
+                LOGGER.error("Duplicate value of expected number of items value: <[{}]>", expectedNumOfItems);
+                throw new RuntimeException("Duplicate entry expected num of items");
             }
-            else {
-                throw new RuntimeException("JSON did not have expected values of 'expected' or 'fpp'");
-            }
+            sizesMapFromJson.put(expectedNumOfItems, fpp);
         }
         return sizesMapFromJson;
     }
@@ -106,70 +101,6 @@ public final class FilterTypes implements Serializable {
         return bitsizeToExpectedItemsMap;
     }
 
-    public String pattern() {
-        final String pattern;
-        final String BLOOM_PATTERN_CONFIG_ITEM = "dpl.pth_06.bloom.pattern";
-        if (config.hasPath(BLOOM_PATTERN_CONFIG_ITEM)) {
-            final String patternFromConfig = config.getString(BLOOM_PATTERN_CONFIG_ITEM);
-            if (patternFromConfig == null || patternFromConfig.isEmpty()) {
-                throw new RuntimeException("Bloom filter pattern was not configured.");
-            }
-            pattern = patternFromConfig.trim();
-        }
-        else {
-            throw new RuntimeException("Missing configuration item: '" + BLOOM_PATTERN_CONFIG_ITEM + "'.");
-        }
-        return pattern;
-    }
-
-    public String tableName() {
-        final String tableName;
-        final String BLOOM_TABLE_NAME_ITEM = "dpl.pth_06.bloom.table.name";
-        if (config.hasPath(BLOOM_TABLE_NAME_ITEM)) {
-            final String tableNameFromConfig = config.getString(BLOOM_TABLE_NAME_ITEM);
-            if (tableNameFromConfig == null || tableNameFromConfig.isEmpty()) {
-                throw new RuntimeException("Bloom filter table name was not configured.");
-            }
-            tableName = tableNameFromConfig.replaceAll("\\s", "").trim();
-        }
-        else {
-            throw new RuntimeException("Missing configuration item: '" + BLOOM_TABLE_NAME_ITEM + "'.");
-        }
-
-        return tableName;
-    }
-
-    public String journalDBName() {
-        final String journalDBName;
-        final String JOURNALDB_TABLE_NAME_ITEM = "dpl.pth_06.archive.db.journaldb.name";
-        if (config.hasPath(JOURNALDB_TABLE_NAME_ITEM)) {
-            final String journalDBNameFromConfig = config.getString(JOURNALDB_TABLE_NAME_ITEM);
-            if (journalDBNameFromConfig == null || journalDBNameFromConfig.isEmpty()) {
-                throw new RuntimeException("Journaldb name was not configured.");
-            }
-            journalDBName = journalDBNameFromConfig;
-        }
-        else {
-            throw new RuntimeException("Missing configuration item: '" + JOURNALDB_TABLE_NAME_ITEM + "'.");
-        }
-        return journalDBName;
-    }
-
-    private String sizesJsonString() {
-        final String jsonString;
-        final String BLOOM_NUMBER_OF_FIELDS_CONFIG_ITEM = "dpl.pth_06.bloom.db.fields";
-        if (config.hasPath(BLOOM_NUMBER_OF_FIELDS_CONFIG_ITEM)) {
-            jsonString = config.getString(BLOOM_NUMBER_OF_FIELDS_CONFIG_ITEM);
-            if (jsonString == null || jsonString.isEmpty()) {
-                throw new RuntimeException("Bloom filter size fields was not configured.");
-            }
-        }
-        else {
-            throw new RuntimeException("Missing configuration item: '" + BLOOM_NUMBER_OF_FIELDS_CONFIG_ITEM + "'.");
-        }
-        return jsonString;
-    }
-
     @Override
     public boolean equals(final Object object) {
         if (this == object)
@@ -179,6 +110,11 @@ public final class FilterTypes implements Serializable {
         if (object.getClass() != this.getClass())
             return false;
         final FilterTypes cast = (FilterTypes) object;
-        return config.equals(cast.config);
+        return filterValuesList.equals(cast.filterValuesList);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(filterValuesList);
     }
 }

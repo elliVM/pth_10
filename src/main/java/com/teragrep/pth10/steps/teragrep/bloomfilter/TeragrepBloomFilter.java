@@ -45,6 +45,11 @@
  */
 package com.teragrep.pth10.steps.teragrep.bloomfilter;
 
+import com.teragrep.pth10.steps.teragrep.bloomfilter.factory.BloomFilterTableNameFactory;
+import com.teragrep.pth10.steps.teragrep.bloomfilter.factory.ConnectionFactory;
+import com.teragrep.pth10.steps.teragrep.bloomfilter.factory.FilterTypesFactory;
+import com.teragrep.pth10.steps.teragrep.bloomfilter.factory.PatternFromConfigFactory;
+import com.typesafe.config.Config;
 import org.apache.spark.util.sketch.BloomFilter;
 
 import java.io.ByteArrayInputStream;
@@ -67,17 +72,60 @@ public final class TeragrepBloomFilter {
     private final String partitionID;
     private final BloomFilter filter;
     private final Connection connection;
-    private final FilterTypes filterTypes;
+    private final Map<Long, Long> bitSizeMap;
+    private final Map<Long, Double> sortedMap;
+    private final String tableName;
+    private final String pattern;
 
-    public TeragrepBloomFilter(String partition, byte[] bytes, Connection connection, FilterTypes filterTypes) {
-        this(partition, new ToBloomFilter(bytes), connection, filterTypes);
+    public TeragrepBloomFilter(String partition, BloomFilter filter, Config config) {
+        this(
+                partition,
+                filter,
+                new ConnectionFactory(config).configured(),
+                new FilterTypesFactory(config).configured(),
+                new BloomFilterTableNameFactory(config).configured(),
+                new PatternFromConfigFactory(config).configured()
+        );
     }
 
-    public TeragrepBloomFilter(String partition, BloomFilter filter, Connection connection, FilterTypes filterTypes) {
+    public TeragrepBloomFilter(String partition, byte[] bytes, Connection connection, Config config) {
+        this(
+                partition,
+                new ToBloomFilter(bytes),
+                connection,
+                new FilterTypesFactory(config).configured(),
+                new BloomFilterTableNameFactory(config).configured(),
+                new PatternFromConfigFactory(config).configured()
+        );
+    }
+
+    public TeragrepBloomFilter(
+            String partition,
+            BloomFilter filter,
+            Connection connection,
+            FilterTypes filterTypes,
+            String tableName,
+            String pattern
+    ) {
+        this(partition, filter, connection, filterTypes.bitSizeMap(), filterTypes.sortedMap(), tableName, pattern);
+    }
+
+    public TeragrepBloomFilter(
+            String partition,
+            BloomFilter filter,
+            Connection connection,
+            Map<Long, Long> bitSizeMap,
+            Map<Long, Double> sortedMap,
+            String tableName,
+            String pattern
+    ) {
         this.partitionID = partition;
         this.filter = filter;
-        this.filterTypes = filterTypes;
         this.connection = connection;
+        this.bitSizeMap = bitSizeMap;
+        this.sortedMap = sortedMap;
+        this.tableName = tableName;
+        this.pattern = pattern;
     }
 
     /**
@@ -86,20 +134,18 @@ public final class TeragrepBloomFilter {
      * @param overwrite Set if existing filter data will be overwritten
      */
     public void saveFilter(final Boolean overwrite) {
-        final long bitSize = filter.bitSize();
-        final long selectedExpectedNumOfItems;
+        final Long bitSize = filter.bitSize();
+        final Long selectedExpectedNumOfItems;
         final Double selectedFpp;
-        final Map<Long, Long> bitSizeMap = filterTypes.bitSizeMap();
         if (bitSizeMap.containsKey(bitSize)) {
             final long expectedItems = bitSizeMap.get(bitSize);
             selectedExpectedNumOfItems = expectedItems;
-            selectedFpp = filterTypes.sortedMap().get(expectedItems);
+            selectedFpp = sortedMap.get(expectedItems);
         }
         else {
             throw new IllegalArgumentException("no such filterSize <[" + bitSize + "]>");
         }
-        final String sql = sqlString(overwrite);
-        final String pattern = filterTypes.pattern();
+        final String sql = insertSQLString(overwrite);
         LOGGER.debug("Save filter SQL: <{}>", sql);
         try (final PreparedStatement stmt = connection.prepareStatement(sql)) {
             try (final ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
@@ -111,7 +157,7 @@ public final class TeragrepBloomFilter {
                 filter.writeTo(baos);
                 InputStream is = new ByteArrayInputStream(baos.toByteArray());
                 stmt.setInt(1, Integer.parseInt(partitionID)); // bloomfilter.partition_id
-                stmt.setInt(2, (int) selectedExpectedNumOfItems); // filtertype.expectedElements
+                stmt.setInt(2, selectedExpectedNumOfItems.intValue()); // filtertype.expectedElements
                 stmt.setDouble(3, selectedFpp); // filtertype.targetFpp
                 stmt.setString(4, pattern); // filtertype.pattern
                 stmt.setBlob(5, is); // bloomfilter.filter
@@ -132,30 +178,32 @@ public final class TeragrepBloomFilter {
         }
     }
 
-    private String sqlString(final Boolean overwriteExisting) {
+    private String insertSQLString(final Boolean overwriteExisting) {
         final String sql;
-        final String name = filterTypes.tableName();
         if (overwriteExisting) {
-            sql = "REPLACE INTO `" + name + "` (`partition_id`, `filter_type_id`,`filter`) " + "VALUES(?,"
+            sql = "REPLACE INTO `" + tableName + "` (`partition_id`, `filter_type_id`,`filter`) " + "VALUES(?,"
                     + "(SELECT `id` FROM `filtertype` WHERE expectedElements=? AND targetFpp=? AND pattern=?)," + "?)";
         }
         else {
-            sql = "INSERT IGNORE INTO `" + name + "` (`partition_id`, `filter_type_id`,`filter`) " + "VALUES(?,"
+            sql = "INSERT IGNORE INTO `" + tableName + "` (`partition_id`, `filter_type_id`,`filter`) " + "VALUES(?,"
                     + "(SELECT `id` FROM `filtertype` WHERE expectedElements=? AND targetFpp=? AND pattern=?)," + "?)";
         }
         return sql;
     }
 
     @Override
-    public boolean equals(final Object object) {
+    public boolean equals(Object object) {
         if (this == object)
             return true;
-        if (object == null)
+        if (object == null || getClass() != object.getClass())
             return false;
-        if (object.getClass() != this.getClass())
-            return false;
-        final TeragrepBloomFilter cast = (TeragrepBloomFilter) object;
-        return Objects.equals(this.partitionID, cast.partitionID) && this.connection.equals(cast.connection)
-                && this.filter.equals(cast.filter) && this.filterTypes.equals(cast.filterTypes);
+        TeragrepBloomFilter that = (TeragrepBloomFilter) object;
+        return Objects.equals(partitionID, that.partitionID) && Objects.equals(filter, that.filter)
+                && Objects.equals(connection, that.connection) && Objects.equals(bitSizeMap, that.bitSizeMap) && Objects.equals(sortedMap, that.sortedMap) && Objects.equals(tableName, that.tableName) && Objects.equals(pattern, that.pattern);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(partitionID, filter, connection, bitSizeMap, sortedMap, tableName, pattern);
     }
 }

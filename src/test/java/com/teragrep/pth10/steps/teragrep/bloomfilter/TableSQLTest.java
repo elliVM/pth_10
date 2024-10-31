@@ -73,7 +73,7 @@ class TableSQLTest {
         RuntimeException e = Assertions.assertThrows(RuntimeException.class, table::createTableSQL);
         Assertions
                 .assertEquals(
-                        "malformed SQL input <[test;%00SELECT%00CONCAT('DROP%00TABLE%00IF%00EXISTS`',table_name,'`;')]>, only use alphabets, numbers and _",
+                        "Malformed table name <[test;%00SELECT%00CONCAT('DROP%00TABLE%00IF%00EXISTS`',table_name,'`;')]>, only use alphabets, numbers and _",
                         e.getMessage()
                 );
     }
@@ -103,7 +103,7 @@ class TableSQLTest {
         RuntimeException e = Assertions.assertThrows(RuntimeException.class, table::createTableSQL);
         Assertions
                 .assertEquals(
-                        "malformed SQL input <[test;%00SELECT%00CONCAT('DROP%00TABLE%00IF%00EXISTS`',table_name,'`;')]>, only use alphabets, numbers and _",
+                        "Malformed table name <[test;%00SELECT%00CONCAT('DROP%00TABLE%00IF%00EXISTS`',table_name,'`;')]>, only use alphabets, numbers and _",
                         e.getMessage()
                 );
     }
@@ -115,7 +115,7 @@ class TableSQLTest {
         RuntimeException e = Assertions.assertThrows(RuntimeException.class, table::createTableSQL);
         Assertions
                 .assertEquals(
-                        "malformed SQL input <[test;%00SELECT%00CONCAT('DROP%00TABLE%00IF%00EXISTS`',table_name,'`;')]>, only use alphabets, numbers and _",
+                        "Malformed table name <[test;%00SELECT%00CONCAT('DROP%00TABLE%00IF%00EXISTS`',table_name,'`;')]>, only use alphabets, numbers and _",
                         e.getMessage()
                 );
     }
@@ -127,7 +127,7 @@ class TableSQLTest {
         RuntimeException e = Assertions.assertThrows(RuntimeException.class, table::createTableSQL);
         Assertions
                 .assertEquals(
-                        "SQL input <[testname_thatistoolongtestname_thatistoolongtestname_thatistoolongtestname_thatistoolongtestnamethati]> was too long, allowed maximum length is 100 characters",
+                        "Table name <[testname_thatistoolongtestname_thatistoolongtestname_thatistoolongtestname_thatistoolongtestnamethati]> was too long, allowed maximum length is 100 characters",
                         e.getMessage()
                 );
     }
@@ -139,7 +139,7 @@ class TableSQLTest {
         RuntimeException e = Assertions.assertThrows(RuntimeException.class, table::createTableSQL);
         Assertions
                 .assertEquals(
-                        "SQL input <[testname_thatistoolongtestname_thatistoolongtestname_thatistoolongtestname_thatistoolongtestnamethati]> was too long, allowed maximum length is 100 characters",
+                        "Table name <[testname_thatistoolongtestname_thatistoolongtestname_thatistoolongtestname_thatistoolongtestnamethati]> was too long, allowed maximum length is 100 characters",
                         e.getMessage()
                 );
     }

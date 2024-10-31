@@ -43,47 +43,33 @@
  * Teragrep, the applicable Commercial License may apply to this file if you as
  * a licensee so wish it.
  */
-package com.teragrep.pth10.steps.teragrep.bloomfilter;
+package com.teragrep.pth10.steps.teragrep.bloomfilter.factory;
 
 import com.typesafe.config.Config;
-import org.apache.spark.api.java.function.ForeachPartitionFunction;
-import org.apache.spark.sql.Row;
 
-import java.sql.Connection;
-import java.util.Iterator;
-
-public final class BloomFilterForeachPartitionFunction implements ForeachPartitionFunction<Row> {
+public final class BloomFilterTableNameFactory implements ConfiguredFactory<String> {
 
     private final Config config;
-    private final LazyConnection lazyConnection;
-    private final boolean overwrite;
 
-    public BloomFilterForeachPartitionFunction(Config config) {
-        this(config, new LazyConnection(config), false);
-    }
-
-    public BloomFilterForeachPartitionFunction(Config config, boolean overwrite) {
-        this(config, new LazyConnection(config), overwrite);
-    }
-
-    public BloomFilterForeachPartitionFunction(Config config, LazyConnection lazyConnection, boolean overwrite) {
+    public BloomFilterTableNameFactory(final Config config) {
         this.config = config;
-        this.lazyConnection = lazyConnection;
-        this.overwrite = overwrite;
     }
 
     @Override
-    public void call(final Iterator<Row> iter) throws Exception {
-        final Connection conn = lazyConnection.get();
-        while (iter.hasNext()) {
-            final Row row = iter.next(); // Row[partitionID, filterBytes]
-            final String partition = row.getString(0);
-            final byte[] filterBytes = (byte[]) row.get(1);
-            final TeragrepBloomFilter tgFilter = new TeragrepBloomFilter(partition, filterBytes, conn, config);
-            tgFilter.saveFilter(overwrite);
-
-            conn.commit();
-
+    public String configured() {
+        final String tableName;
+        final String BLOOM_TABLE_NAME_ITEM = "dpl.pth_06.bloom.table.name";
+        if (config.hasPath(BLOOM_TABLE_NAME_ITEM)) {
+            final String tableNameFromConfig = config.getString(BLOOM_TABLE_NAME_ITEM);
+            if (tableNameFromConfig == null || tableNameFromConfig.isEmpty()) {
+                throw new RuntimeException("name <" + tableNameFromConfig + "> was null or empty");
+            }
+            tableName = tableNameFromConfig.replaceAll("\\s", "").trim();
         }
+        else {
+            throw new RuntimeException("Missing configuration item <" + BLOOM_TABLE_NAME_ITEM + ">");
+        }
+
+        return tableName;
     }
 }

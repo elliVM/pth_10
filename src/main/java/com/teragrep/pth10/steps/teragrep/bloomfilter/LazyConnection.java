@@ -49,6 +49,7 @@ import java.io.Serializable;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
+import java.util.Objects;
 
 import com.typesafe.config.Config;
 
@@ -137,5 +138,10 @@ public final class LazyConnection implements Serializable {
             return false;
         final LazyConnection cast = (LazyConnection) object;
         return this.config.equals(cast.config);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(config);
     }
 }

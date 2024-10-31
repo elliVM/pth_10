@@ -43,47 +43,47 @@
  * Teragrep, the applicable Commercial License may apply to this file if you as
  * a licensee so wish it.
  */
-package com.teragrep.pth10.steps.teragrep.bloomfilter;
+package com.teragrep.pth10.steps.teragrep.bloomfilter.factory;
 
+import com.google.gson.Gson;
+import com.google.gson.JsonSyntaxException;
 import com.typesafe.config.Config;
-import org.apache.spark.api.java.function.ForeachPartitionFunction;
-import org.apache.spark.sql.Row;
+import org.sparkproject.guava.reflect.TypeToken;
 
-import java.sql.Connection;
-import java.util.Iterator;
+import java.util.List;
 
-public final class BloomFilterForeachPartitionFunction implements ForeachPartitionFunction<Row> {
+public final class FilterFieldsJsonObjectListFactory implements ConfiguredFactory<List<FilterOptionValues>> {
 
     private final Config config;
-    private final LazyConnection lazyConnection;
-    private final boolean overwrite;
 
-    public BloomFilterForeachPartitionFunction(Config config) {
-        this(config, new LazyConnection(config), false);
-    }
-
-    public BloomFilterForeachPartitionFunction(Config config, boolean overwrite) {
-        this(config, new LazyConnection(config), overwrite);
-    }
-
-    public BloomFilterForeachPartitionFunction(Config config, LazyConnection lazyConnection, boolean overwrite) {
+    public FilterFieldsJsonObjectListFactory(final Config config) {
         this.config = config;
-        this.lazyConnection = lazyConnection;
-        this.overwrite = overwrite;
     }
 
-    @Override
-    public void call(final Iterator<Row> iter) throws Exception {
-        final Connection conn = lazyConnection.get();
-        while (iter.hasNext()) {
-            final Row row = iter.next(); // Row[partitionID, filterBytes]
-            final String partition = row.getString(0);
-            final byte[] filterBytes = (byte[]) row.get(1);
-            final TeragrepBloomFilter tgFilter = new TeragrepBloomFilter(partition, filterBytes, conn, config);
-            tgFilter.saveFilter(overwrite);
-
-            conn.commit();
-
+    public List<FilterOptionValues> configured() {
+        final String json = sizesJsonString();
+        final Gson gson = new Gson();
+        try {
+            return gson.fromJson(json, new TypeToken<List<FilterOptionValues>>() {
+            }.getType());
         }
+        catch (final JsonSyntaxException e) {
+            throw new RuntimeException("Error parsing JSON: " + e.getMessage());
+        }
+    }
+
+    private String sizesJsonString() {
+        final String jsonString;
+        final String BLOOM_NUMBER_OF_FIELDS_CONFIG_ITEM = "dpl.pth_06.bloom.db.fields";
+        if (config.hasPath(BLOOM_NUMBER_OF_FIELDS_CONFIG_ITEM)) {
+            jsonString = config.getString(BLOOM_NUMBER_OF_FIELDS_CONFIG_ITEM);
+            if (jsonString == null || jsonString.isEmpty()) {
+                throw new RuntimeException("Bloom filter size fields was not configured.");
+            }
+        }
+        else {
+            throw new RuntimeException("Missing configuration item: '" + BLOOM_NUMBER_OF_FIELDS_CONFIG_ITEM + "'.");
+        }
+        return jsonString;
     }
 }

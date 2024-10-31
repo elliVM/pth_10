@@ -60,7 +60,7 @@ class BloomFilterTableTest {
 
     final String username = "sa";
     final String password = "";
-    final String connectionUrl = "jdbc:h2:~/test;MODE=MariaDB;DATABASE_TO_LOWER=TRUE;CASE_INSENSITIVE_IDENTIFIERS=TRUE";
+    final String connectionUrl = "jdbc:h2:mem:test;MODE=MariaDB;DATABASE_TO_LOWER=TRUE;CASE_INSENSITIVE_IDENTIFIERS=TRUE";
 
     @BeforeAll
     void setEnv() {
@@ -93,7 +93,7 @@ class BloomFilterTableTest {
         RuntimeException e = Assertions.assertThrows(RuntimeException.class, injectionTable::create);
         Assertions
                 .assertEquals(
-                        "malformed SQL input <[test;%00SELECT%00CONCAT('DROP%00TABLE%00IF%00EXISTS`',table_name,'`;')]>, only use alphabets, numbers and _",
+                        "Malformed table name <[test;%00SELECT%00CONCAT('DROP%00TABLE%00IF%00EXISTS`',table_name,'`;')]>, only use alphabets, numbers and _",
                         e.getMessage()
                 );
     }
@@ -108,7 +108,7 @@ class BloomFilterTableTest {
         RuntimeException e = Assertions.assertThrows(RuntimeException.class, table::create);
         Assertions
                 .assertEquals(
-                        "SQL input <[testname_thatistoolongtestname_thatistoolongtestname_thatistoolongtestname_thatistoolongtestnamethati]> was too long, allowed maximum length is 100 characters",
+                        "Table name <[testname_thatistoolongtestname_thatistoolongtestname_thatistoolongtestname_thatistoolongtestnamethati]> was too long, allowed maximum length is 100 characters",
                         e.getMessage()
                 );
     }

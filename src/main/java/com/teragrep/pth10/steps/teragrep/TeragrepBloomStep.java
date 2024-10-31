@@ -48,10 +48,9 @@ package com.teragrep.pth10.steps.teragrep;
 import com.teragrep.functions.dpf_03.BloomFilterAggregator;
 import com.teragrep.pth10.steps.AbstractStep;
 import com.teragrep.pth10.steps.teragrep.aggregate.ColumnBinaryListingDataset;
-import com.teragrep.pth10.steps.teragrep.bloomfilter.BloomFilterForeachPartitionFunction;
 import com.teragrep.pth10.steps.teragrep.bloomfilter.BloomFilterTable;
 import com.teragrep.pth10.steps.teragrep.bloomfilter.FilterTypes;
-import com.teragrep.pth10.steps.teragrep.bloomfilter.LazyConnection;
+import com.teragrep.pth10.steps.teragrep.bloomfilter.factory.*;
 import com.typesafe.config.Config;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
@@ -134,10 +133,13 @@ public final class TeragrepBloomStep extends AbstractStep {
      * @return Dataset unmodified
      */
     private Dataset<Row> createBloomFilter(Dataset<Row> dataset) {
-        writeFilterTypes(this.zeppelinConfig);
-        final BloomFilterTable table = new BloomFilterTable(zeppelinConfig);
+        writeFilterTypes();
+        final BloomFilterTable table = new BloomFilterTableFactory(zeppelinConfig).configured();
         table.create();
-        dataset.foreachPartition(new BloomFilterForeachPartitionFunction(this.zeppelinConfig));
+        final BloomFilterForeachPartitionFunctionFactory foreachFunctionFactory = new BloomFilterForeachPartitionFunctionFactory(
+                this.zeppelinConfig
+        );
+        dataset.foreachPartition(foreachFunctionFactory.configured());
         return dataset;
     }
 
@@ -148,10 +150,14 @@ public final class TeragrepBloomStep extends AbstractStep {
      * @return Dataset unmodified
      */
     private Dataset<Row> updateBloomFilter(Dataset<Row> dataset) {
-        writeFilterTypes(this.zeppelinConfig);
-        final BloomFilterTable table = new BloomFilterTable(zeppelinConfig);
+        writeFilterTypes();
+        final BloomFilterTable table = new BloomFilterTableFactory(zeppelinConfig).configured();
         table.create();
-        dataset.foreachPartition(new BloomFilterForeachPartitionFunction(this.zeppelinConfig, true));
+        final BloomFilterForeachPartitionFunctionFactory foreachFunctionFactory = new BloomFilterForeachPartitionFunctionFactory(
+                zeppelinConfig,
+                true
+        );
+        dataset.foreachPartition(foreachFunctionFactory.configured());
         return dataset;
     }
 
@@ -164,10 +170,13 @@ public final class TeragrepBloomStep extends AbstractStep {
 
     public Dataset<Row> aggregate(final Dataset<Row> dataset) {
         final ColumnBinaryListingDataset colBinaryListingDataset = new ColumnBinaryListingDataset(dataset, inputCol);
+        final SortedMap<Long, Double> filterTypesMap = new FilterTypesFactory(this.zeppelinConfig)
+                .configured()
+                .sortedMap();
         final BloomFilterAggregator bloomFilterAggregator = new BloomFilterAggregator(
                 inputCol,
                 estimateCol,
-                new FilterTypes(this.zeppelinConfig).sortedMap()
+                filterTypesMap
         );
         return colBinaryListingDataset
                 .dataset()
@@ -175,11 +184,11 @@ public final class TeragrepBloomStep extends AbstractStep {
                 .agg(bloomFilterAggregator.toColumn().as("bloomfilter"));
     }
 
-    private void writeFilterTypes(final Config config) {
-        final FilterTypes filterTypes = new FilterTypes(config);
-        final Connection connection = new LazyConnection(config).get();
+    private void writeFilterTypes() {
+        final FilterTypes filterTypes = new FilterTypesFactory(zeppelinConfig).configured();
+        final Connection connection = new ConnectionFactory(zeppelinConfig).configured();
+        final String pattern = new PatternFromConfigFactory(zeppelinConfig).configured();
         final SortedMap<Long, Double> filterSizeMap = filterTypes.sortedMap();
-        final String pattern = filterTypes.pattern();
         for (final Map.Entry<Long, Double> entry : filterSizeMap.entrySet()) {
             if (LOGGER.isInfoEnabled()) {
                 LOGGER

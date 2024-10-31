@@ -45,10 +45,12 @@
  */
 package com.teragrep.pth10.steps.teragrep.bloomfilter;
 
+import com.teragrep.pth10.steps.teragrep.bloomfilter.factory.BloomFilterTableNameFactory;
+import com.teragrep.pth10.steps.teragrep.bloomfilter.factory.JournalDBNameFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.regex.Pattern;
+import java.util.Objects;
 
 public final class TableSQL {
 
@@ -56,21 +58,6 @@ public final class TableSQL {
     private final String name;
     private final String journalDBName;
     private final boolean ignoreConstraints;
-
-    private void validSQLName(final String sql) {
-        if (ignoreConstraints && LOGGER.isDebugEnabled()) {
-            LOGGER.debug("Ignore database constraints active this should be only used in testing");
-        }
-        final Pattern pattern = Pattern.compile("^[A-Za-z0-9_]+$");
-        if (!pattern.matcher(sql).find()) {
-            throw new RuntimeException("malformed SQL input <[" + sql + "]>, only use alphabets, numbers and _");
-        }
-        if (sql.length() > 100) {
-            throw new RuntimeException(
-                    "SQL input <[" + sql + "]> was too long, allowed maximum length is 100 characters"
-            );
-        }
-    }
 
     // used in testing
     public TableSQL(String name) {
@@ -80,6 +67,18 @@ public final class TableSQL {
     // used in testing
     public TableSQL(String name, boolean ignoreConstraints) {
         this(name, "journaldb", ignoreConstraints);
+    }
+
+    public TableSQL(BloomFilterTableNameFactory tableNameFactory, JournalDBNameFactory journalDBNameFactory) {
+        this(tableNameFactory.configured(), journalDBNameFactory.configured(), false);
+    }
+
+    public TableSQL(
+            BloomFilterTableNameFactory tableNameFactory,
+            JournalDBNameFactory journalDBNameFactory,
+            boolean ignoreConstraints
+    ) {
+        this(tableNameFactory.configured(), journalDBNameFactory.configured(), ignoreConstraints);
     }
 
     public TableSQL(String name, String journalDBName) {
@@ -93,23 +92,23 @@ public final class TableSQL {
     }
 
     public String createTableSQL() {
-        validSQLName(name);
         final String sql;
+        final String validName = new ValidTableName(name).name();
         if (ignoreConstraints) {
-            sql = "CREATE TABLE IF NOT EXISTS `" + name + "`("
+            sql = "CREATE TABLE IF NOT EXISTS `" + validName + "`("
                     + "`id` BIGINT UNSIGNED NOT NULL auto_increment PRIMARY KEY,"
                     + "`partition_id` BIGINT UNSIGNED NOT NULL UNIQUE," + "`filter_type_id` BIGINT UNSIGNED NOT NULL,"
                     + "`filter` LONGBLOB NOT NULL);";
         }
         else {
-            validSQLName(journalDBName);
-            sql = "CREATE TABLE IF NOT EXISTS `" + name + "`("
+            final String validJournalDBName = new ValidTableName(journalDBName).name();
+            sql = "CREATE TABLE IF NOT EXISTS `" + validName + "`("
                     + "`id` BIGINT UNSIGNED NOT NULL auto_increment PRIMARY KEY,"
                     + "`partition_id` BIGINT UNSIGNED NOT NULL UNIQUE," + "`filter_type_id` BIGINT UNSIGNED NOT NULL,"
-                    + "`filter` LONGBLOB NOT NULL," + "CONSTRAINT `" + name
+                    + "`filter` LONGBLOB NOT NULL," + "CONSTRAINT `" + validName
                     + "_ibfk_1` FOREIGN KEY (filter_type_id) REFERENCES filtertype (id)" + "ON DELETE CASCADE,"
-                    + "CONSTRAINT `" + name + "_ibfk_2` FOREIGN KEY (partition_id) REFERENCES " + journalDBName
-                    + ".logfile (id)" + "ON DELETE CASCADE" + ");";
+                    + "CONSTRAINT `" + validName + "_ibfk_2` FOREIGN KEY (partition_id) REFERENCES "
+                    + validJournalDBName + ".logfile (id)" + "ON DELETE CASCADE" + ");";
         }
         return sql;
     }
@@ -124,5 +123,10 @@ public final class TableSQL {
             return false;
         final TableSQL cast = (TableSQL) object;
         return this.name.equals(cast.name) && this.ignoreConstraints == cast.ignoreConstraints;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(name, journalDBName, ignoreConstraints);
     }
 }

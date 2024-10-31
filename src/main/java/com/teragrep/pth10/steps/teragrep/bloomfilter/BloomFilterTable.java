@@ -45,6 +45,8 @@
  */
 package com.teragrep.pth10.steps.teragrep.bloomfilter;
 
+import com.teragrep.pth10.steps.teragrep.bloomfilter.factory.BloomFilterTableNameFactory;
+import com.teragrep.pth10.steps.teragrep.bloomfilter.factory.JournalDBNameFactory;
 import com.typesafe.config.Config;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -60,15 +62,16 @@ public final class BloomFilterTable {
     private final LazyConnection conn;
 
     public BloomFilterTable(Config config) {
-        this(new FilterTypes(config), new LazyConnection(config), false);
+        this(
+                new TableSQL(new BloomFilterTableNameFactory(config), new JournalDBNameFactory(config)),
+                new LazyConnection(config)
+        );
     }
 
     public BloomFilterTable(Config config, boolean ignoreConstraints) {
-        this(new FilterTypes(config), new LazyConnection(config), ignoreConstraints);
-    }
-
-    public BloomFilterTable(FilterTypes filterTypes, LazyConnection lazyConnection, boolean ignoreConstraints) {
-        this(new TableSQL(filterTypes.tableName(), filterTypes.journalDBName(), ignoreConstraints), lazyConnection);
+        this(
+                new TableSQL(new BloomFilterTableNameFactory(config), new JournalDBNameFactory(config), ignoreConstraints), new LazyConnection(config)
+        );
     }
 
     public BloomFilterTable(TableSQL tableSQL, LazyConnection conn) {

@@ -43,47 +43,46 @@
  * Teragrep, the applicable Commercial License may apply to this file if you as
  * a licensee so wish it.
  */
-package com.teragrep.pth10.steps.teragrep.bloomfilter;
+package com.teragrep.pth10.steps.teragrep.bloomfilter.factory;
 
-import com.typesafe.config.Config;
-import org.apache.spark.api.java.function.ForeachPartitionFunction;
-import org.apache.spark.sql.Row;
+import java.util.Objects;
 
-import java.sql.Connection;
-import java.util.Iterator;
+public final class FilterOptionValues {
 
-public final class BloomFilterForeachPartitionFunction implements ForeachPartitionFunction<Row> {
+    private final Long expected;
+    private final Double fpp;
 
-    private final Config config;
-    private final LazyConnection lazyConnection;
-    private final boolean overwrite;
-
-    public BloomFilterForeachPartitionFunction(Config config) {
-        this(config, new LazyConnection(config), false);
+    public FilterOptionValues(final Long expected, final Double fpp) {
+        this.expected = expected;
+        this.fpp = fpp;
     }
 
-    public BloomFilterForeachPartitionFunction(Config config, boolean overwrite) {
-        this(config, new LazyConnection(config), overwrite);
+    public Long expected() {
+        if (expected <= 0) {
+            throw new RuntimeException("Expected <" + expected + "> has negative of zero value");
+        }
+        return expected;
     }
 
-    public BloomFilterForeachPartitionFunction(Config config, LazyConnection lazyConnection, boolean overwrite) {
-        this.config = config;
-        this.lazyConnection = lazyConnection;
-        this.overwrite = overwrite;
+    public Double fpp() {
+        if (fpp <= 0) {
+            throw new RuntimeException("Fpp <" + fpp + "> has negative of zero value");
+        }
+        return fpp;
     }
 
     @Override
-    public void call(final Iterator<Row> iter) throws Exception {
-        final Connection conn = lazyConnection.get();
-        while (iter.hasNext()) {
-            final Row row = iter.next(); // Row[partitionID, filterBytes]
-            final String partition = row.getString(0);
-            final byte[] filterBytes = (byte[]) row.get(1);
-            final TeragrepBloomFilter tgFilter = new TeragrepBloomFilter(partition, filterBytes, conn, config);
-            tgFilter.saveFilter(overwrite);
+    public boolean equals(final Object object) {
+        if (this == object)
+            return true;
+        if (object == null || getClass() != object.getClass())
+            return false;
+        final FilterOptionValues cast = (FilterOptionValues) object;
+        return Objects.equals(expected, cast.expected) && Objects.equals(fpp, cast.fpp);
+    }
 
-            conn.commit();
-
-        }
+    @Override
+    public int hashCode() {
+        return Objects.hash(expected, fpp);
     }
 }

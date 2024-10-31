@@ -45,45 +45,30 @@
  */
 package com.teragrep.pth10.steps.teragrep.bloomfilter;
 
-import com.typesafe.config.Config;
-import org.apache.spark.api.java.function.ForeachPartitionFunction;
-import org.apache.spark.sql.Row;
+import java.util.regex.Pattern;
 
-import java.sql.Connection;
-import java.util.Iterator;
+public final class ValidTableName {
 
-public final class BloomFilterForeachPartitionFunction implements ForeachPartitionFunction<Row> {
+    private final String name;
 
-    private final Config config;
-    private final LazyConnection lazyConnection;
-    private final boolean overwrite;
-
-    public BloomFilterForeachPartitionFunction(Config config) {
-        this(config, new LazyConnection(config), false);
+    public ValidTableName(final String name) {
+        this.name = name;
     }
 
-    public BloomFilterForeachPartitionFunction(Config config, boolean overwrite) {
-        this(config, new LazyConnection(config), overwrite);
-    }
-
-    public BloomFilterForeachPartitionFunction(Config config, LazyConnection lazyConnection, boolean overwrite) {
-        this.config = config;
-        this.lazyConnection = lazyConnection;
-        this.overwrite = overwrite;
-    }
-
-    @Override
-    public void call(final Iterator<Row> iter) throws Exception {
-        final Connection conn = lazyConnection.get();
-        while (iter.hasNext()) {
-            final Row row = iter.next(); // Row[partitionID, filterBytes]
-            final String partition = row.getString(0);
-            final byte[] filterBytes = (byte[]) row.get(1);
-            final TeragrepBloomFilter tgFilter = new TeragrepBloomFilter(partition, filterBytes, conn, config);
-            tgFilter.saveFilter(overwrite);
-
-            conn.commit();
-
+    private void isValidSQLTableName(final String sql) {
+        if (sql.length() > 100) {
+            throw new RuntimeException(
+                    "Table name <[" + sql + "]> was too long, allowed maximum length is 100 characters"
+            );
         }
+        final Pattern pattern = Pattern.compile("^[A-Za-z0-9_]+$");
+        if (!pattern.matcher(sql).find()) {
+            throw new RuntimeException("Malformed table name <[" + sql + "]>, only use alphabets, numbers and _");
+        }
+    }
+
+    public String name() {
+        isValidSQLTableName(name);
+        return name;
     }
 }

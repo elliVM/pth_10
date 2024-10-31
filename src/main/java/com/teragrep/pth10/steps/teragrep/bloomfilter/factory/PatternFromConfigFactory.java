@@ -43,47 +43,31 @@
  * Teragrep, the applicable Commercial License may apply to this file if you as
  * a licensee so wish it.
  */
-package com.teragrep.pth10.steps.teragrep.bloomfilter;
+package com.teragrep.pth10.steps.teragrep.bloomfilter.factory;
 
 import com.typesafe.config.Config;
-import org.apache.spark.api.java.function.ForeachPartitionFunction;
-import org.apache.spark.sql.Row;
 
-import java.sql.Connection;
-import java.util.Iterator;
-
-public final class BloomFilterForeachPartitionFunction implements ForeachPartitionFunction<Row> {
+public final class PatternFromConfigFactory implements ConfiguredFactory<String> {
 
     private final Config config;
-    private final LazyConnection lazyConnection;
-    private final boolean overwrite;
 
-    public BloomFilterForeachPartitionFunction(Config config) {
-        this(config, new LazyConnection(config), false);
-    }
-
-    public BloomFilterForeachPartitionFunction(Config config, boolean overwrite) {
-        this(config, new LazyConnection(config), overwrite);
-    }
-
-    public BloomFilterForeachPartitionFunction(Config config, LazyConnection lazyConnection, boolean overwrite) {
+    public PatternFromConfigFactory(final Config config) {
         this.config = config;
-        this.lazyConnection = lazyConnection;
-        this.overwrite = overwrite;
     }
 
-    @Override
-    public void call(final Iterator<Row> iter) throws Exception {
-        final Connection conn = lazyConnection.get();
-        while (iter.hasNext()) {
-            final Row row = iter.next(); // Row[partitionID, filterBytes]
-            final String partition = row.getString(0);
-            final byte[] filterBytes = (byte[]) row.get(1);
-            final TeragrepBloomFilter tgFilter = new TeragrepBloomFilter(partition, filterBytes, conn, config);
-            tgFilter.saveFilter(overwrite);
-
-            conn.commit();
-
+    public String configured() {
+        final String pattern;
+        final String BLOOM_PATTERN_CONFIG_ITEM = "dpl.pth_06.bloom.pattern";
+        if (config.hasPath(BLOOM_PATTERN_CONFIG_ITEM)) {
+            final String patternFromConfig = config.getString(BLOOM_PATTERN_CONFIG_ITEM);
+            if (patternFromConfig == null || patternFromConfig.isEmpty()) {
+                throw new RuntimeException("Bloom filter pattern was not configured.");
+            }
+            pattern = patternFromConfig.trim();
         }
+        else {
+            throw new RuntimeException("Missing configuration item: '" + BLOOM_PATTERN_CONFIG_ITEM + "'.");
+        }
+        return pattern;
     }
 }
