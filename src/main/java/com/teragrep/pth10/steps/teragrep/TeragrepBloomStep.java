@@ -48,7 +48,6 @@ package com.teragrep.pth10.steps.teragrep;
 import com.teragrep.functions.dpf_03.BloomFilterAggregator;
 import com.teragrep.pth10.steps.AbstractStep;
 import com.teragrep.pth10.steps.teragrep.aggregate.ColumnBinaryListingDataset;
-import com.teragrep.pth10.steps.teragrep.bloomfilter.BloomFilterTable;
 import com.teragrep.pth10.steps.teragrep.bloomfilter.FilterTypes;
 import com.teragrep.pth10.steps.teragrep.bloomfilter.factory.*;
 import com.typesafe.config.Config;
@@ -134,8 +133,7 @@ public final class TeragrepBloomStep extends AbstractStep {
      */
     private Dataset<Row> createBloomFilter(Dataset<Row> dataset) {
         writeFilterTypes();
-        final BloomFilterTable table = new BloomFilterTableFactory(zeppelinConfig).configured();
-        table.create();
+        new BloomFilterTableFactory(zeppelinConfig).configured().create();
         final BloomFilterForeachPartitionFunctionFactory foreachFunctionFactory = new BloomFilterForeachPartitionFunctionFactory(
                 this.zeppelinConfig
         );
@@ -151,8 +149,7 @@ public final class TeragrepBloomStep extends AbstractStep {
      */
     private Dataset<Row> updateBloomFilter(Dataset<Row> dataset) {
         writeFilterTypes();
-        final BloomFilterTable table = new BloomFilterTableFactory(zeppelinConfig).configured();
-        table.create();
+        new BloomFilterTableFactory(zeppelinConfig).configured().create();
         final BloomFilterForeachPartitionFunctionFactory foreachFunctionFactory = new BloomFilterForeachPartitionFunctionFactory(
                 zeppelinConfig,
                 true

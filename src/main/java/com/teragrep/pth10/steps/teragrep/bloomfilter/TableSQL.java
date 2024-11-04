@@ -47,6 +47,7 @@ package com.teragrep.pth10.steps.teragrep.bloomfilter;
 
 import com.teragrep.pth10.steps.teragrep.bloomfilter.factory.BloomFilterTableNameFactory;
 import com.teragrep.pth10.steps.teragrep.bloomfilter.factory.JournalDBNameFactory;
+import com.typesafe.config.Config;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -67,6 +68,22 @@ public final class TableSQL {
     // used in testing
     public TableSQL(String name, boolean ignoreConstraints) {
         this(name, "journaldb", ignoreConstraints);
+    }
+
+    public TableSQL(Config config) {
+        this(
+                new BloomFilterTableNameFactory(config).configured(),
+                new JournalDBNameFactory(config).configured(),
+                false
+        );
+    }
+
+    public TableSQL(Config config, boolean ignoreConstraints) {
+        this(
+                new BloomFilterTableNameFactory(config).configured(),
+                new JournalDBNameFactory(config).configured(),
+                ignoreConstraints
+        );
     }
 
     public TableSQL(BloomFilterTableNameFactory tableNameFactory, JournalDBNameFactory journalDBNameFactory) {

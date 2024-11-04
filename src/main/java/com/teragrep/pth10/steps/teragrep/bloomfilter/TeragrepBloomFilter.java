@@ -148,33 +148,37 @@ public final class TeragrepBloomFilter {
         final String sql = insertSQLString(overwrite);
         LOGGER.debug("Save filter SQL: <{}>", sql);
         try (final PreparedStatement stmt = connection.prepareStatement(sql)) {
-            try (final ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
-                LOGGER
-                        .debug(
-                                "Saving filter expected <[{}]>, fpp <[{}]>, pattern <[{}]>, overwrite existing data=<{}>",
-                                selectedExpectedNumOfItems, selectedFpp, pattern, overwrite
-                        );
-                filter.writeTo(baos);
-                InputStream is = new ByteArrayInputStream(baos.toByteArray());
-                stmt.setInt(1, Integer.parseInt(partitionID)); // bloomfilter.partition_id
-                stmt.setInt(2, selectedExpectedNumOfItems.intValue()); // filtertype.expectedElements
-                stmt.setDouble(3, selectedFpp); // filtertype.targetFpp
-                stmt.setString(4, pattern); // filtertype.pattern
-                stmt.setBlob(5, is); // bloomfilter.filter
-                stmt.executeUpdate();
-                stmt.clearParameters();
-                is.close();
-                connection.commit();
-            }
-            catch (IOException e) {
-                throw new RuntimeException("Error serializing data: " + e);
-            }
-            catch (SQLException e) {
-                throw new RuntimeException("Error writing to database: " + e);
-            }
+            LOGGER
+                    .debug(
+                            "Saving filter expected <[{}]>, fpp <[{}]>, pattern <[{}]>, overwrite existing data=<{}>",
+                            selectedExpectedNumOfItems, selectedFpp, pattern, overwrite
+                    );
+            final InputStream is = asInputStream();
+            stmt.setInt(1, Integer.parseInt(partitionID)); // bloomfilter.partition_id
+            stmt.setInt(2, selectedExpectedNumOfItems.intValue()); // filtertype.expectedElements
+            stmt.setDouble(3, selectedFpp); // filtertype.targetFpp
+            stmt.setString(4, pattern); // filtertype.pattern
+            stmt.setBlob(5, is); // bloomfilter.filter
+            stmt.executeUpdate();
+            stmt.clearParameters();
+            is.close();
+            connection.commit();
         }
         catch (SQLException e) {
             throw new RuntimeException("Error generating a prepared statement: " + e);
+        }
+        catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private InputStream asInputStream() {
+        try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
+            filter.writeTo(baos);
+            return new ByteArrayInputStream(baos.toByteArray());
+        }
+        catch (IOException e) {
+            throw new RuntimeException(e);
         }
     }
 
@@ -192,14 +196,14 @@ public final class TeragrepBloomFilter {
     }
 
     @Override
-    public boolean equals(Object object) {
+    public boolean equals(final Object object) {
         if (this == object)
             return true;
         if (object == null || getClass() != object.getClass())
             return false;
-        TeragrepBloomFilter that = (TeragrepBloomFilter) object;
-        return Objects.equals(partitionID, that.partitionID) && Objects.equals(filter, that.filter)
-                && Objects.equals(connection, that.connection) && Objects.equals(bitSizeMap, that.bitSizeMap) && Objects.equals(sortedMap, that.sortedMap) && Objects.equals(tableName, that.tableName) && Objects.equals(pattern, that.pattern);
+        final TeragrepBloomFilter cast = (TeragrepBloomFilter) object;
+        return Objects.equals(partitionID, cast.partitionID) && Objects.equals(filter, cast.filter)
+                && Objects.equals(connection, cast.connection) && Objects.equals(bitSizeMap, cast.bitSizeMap) && Objects.equals(sortedMap, cast.sortedMap) && Objects.equals(tableName, cast.tableName) && Objects.equals(pattern, cast.pattern);
     }
 
     @Override

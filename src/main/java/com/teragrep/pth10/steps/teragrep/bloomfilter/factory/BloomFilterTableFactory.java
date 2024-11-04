@@ -51,13 +51,18 @@ import com.typesafe.config.Config;
 public final class BloomFilterTableFactory implements ConfiguredFactory<BloomFilterTable> {
 
     private final Config config;
+    private final boolean ignoreConstraints;
 
     public BloomFilterTableFactory(final Config config) {
+        this(config, false);
+    }
+    public BloomFilterTableFactory(final Config config, boolean ignoreConstraints) {
         this.config = config;
+        this.ignoreConstraints = ignoreConstraints;
     }
 
     @Override
     public BloomFilterTable configured() {
-        return new BloomFilterTable(config);
+        return new BloomFilterTable(config, ignoreConstraints);
     }
 }

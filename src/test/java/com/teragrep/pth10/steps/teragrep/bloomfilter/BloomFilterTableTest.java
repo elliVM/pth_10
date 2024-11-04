@@ -45,6 +45,7 @@
  */
 package com.teragrep.pth10.steps.teragrep.bloomfilter;
 
+import com.teragrep.pth10.steps.teragrep.bloomfilter.factory.BloomFilterTableFactory;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import org.junit.jupiter.api.*;
@@ -89,8 +90,8 @@ class BloomFilterTableTest {
         String injection = "test;%00SELECT%00CONCAT('DROP%00TABLE%00IF%00EXISTS`',table_name,'`;')";
         properties.put("dpl.pth_06.bloom.table.name", injection);
         Config config = ConfigFactory.parseProperties(properties);
-        BloomFilterTable injectionTable = new BloomFilterTable(config, true);
-        RuntimeException e = Assertions.assertThrows(RuntimeException.class, injectionTable::create);
+        BloomFilterTableFactory factory = new BloomFilterTableFactory(config, true);
+        RuntimeException e = Assertions.assertThrows(RuntimeException.class, factory::configured);
         Assertions
                 .assertEquals(
                         "Malformed table name <[test;%00SELECT%00CONCAT('DROP%00TABLE%00IF%00EXISTS`',table_name,'`;')]>, only use alphabets, numbers and _",
@@ -104,8 +105,8 @@ class BloomFilterTableTest {
         String tooLongName = "testname_thatistoolongtestname_thatistoolongtestname_thatistoolongtestname_thatistoolongtestnamethati";
         properties.put("dpl.pth_06.bloom.table.name", tooLongName);
         Config config = ConfigFactory.parseProperties(properties);
-        BloomFilterTable table = new BloomFilterTable(config, true);
-        RuntimeException e = Assertions.assertThrows(RuntimeException.class, table::create);
+        BloomFilterTableFactory factory = new BloomFilterTableFactory(config, true);
+        RuntimeException e = Assertions.assertThrows(RuntimeException.class, factory::configured);
         Assertions
                 .assertEquals(
                         "Table name <[testname_thatistoolongtestname_thatistoolongtestname_thatistoolongtestname_thatistoolongtestnamethati]> was too long, allowed maximum length is 100 characters",

@@ -43,61 +43,26 @@
  * Teragrep, the applicable Commercial License may apply to this file if you as
  * a licensee so wish it.
  */
-package com.teragrep.pth10.steps.teragrep.bloomfilter;
+package com.teragrep.pth10.steps.teragrep.bloomfilter.factory;
 
-import com.teragrep.pth10.steps.teragrep.bloomfilter.factory.ConnectionFactory;
-import com.teragrep.pth10.steps.teragrep.bloomfilter.factory.TableSQLFactory;
+import com.teragrep.pth10.steps.teragrep.bloomfilter.TableSQL;
 import com.typesafe.config.Config;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.SQLException;
-import java.util.Objects;
+public class TableSQLFactory implements ConfiguredFactory<String> {
 
-public final class BloomFilterTable {
+    private final Config config;
+    private final boolean ignoreConstraints;
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(BloomFilterTable.class);
-    private final String createTableSQL;
-    private final Connection connection;
-
-    public BloomFilterTable(Config config) {
-        this(new TableSQLFactory(config).configured(), new ConnectionFactory(config).configured());
+    public TableSQLFactory(Config config) {
+        this(config, false);
     }
 
-    public BloomFilterTable(Config config, boolean ignoreConstraints) {
-        this(new TableSQLFactory(config, ignoreConstraints).configured(), new ConnectionFactory(config).configured());
+    public TableSQLFactory(Config config, boolean ignoreConstraints) {
+        this.config = config;
+        this.ignoreConstraints = ignoreConstraints;
     }
 
-    public BloomFilterTable(String createTableSQL, Connection connection) {
-        this.createTableSQL = createTableSQL;
-        this.connection = connection;
-    }
-
-    public void create() {
-        try (final PreparedStatement stmt = connection.prepareStatement(createTableSQL)) {
-            stmt.execute();
-            connection.commit();
-            LOGGER.debug("Create table SQL <{}>", createTableSQL);
-        }
-        catch (SQLException e) {
-            throw new RuntimeException("Error creating bloom filter table: " + e);
-        }
-    }
-
-    @Override
-    public boolean equals(final Object object) {
-        if (this == object)
-            return true;
-        if (object == null || getClass() != object.getClass())
-            return false;
-        final BloomFilterTable cast = (BloomFilterTable) object;
-        return Objects.equals(createTableSQL, cast.createTableSQL) && Objects.equals(connection, cast.connection);
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(createTableSQL, connection);
+    public String configured() {
+        return new TableSQL(config, ignoreConstraints).createTableSQL();
     }
 }
