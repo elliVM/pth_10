@@ -46,7 +46,6 @@
 package com.teragrep.pth10.steps.teragrep.bloomfilter;
 
 import com.teragrep.pth10.steps.teragrep.bloomfilter.factory.ConnectionFactory;
-import com.teragrep.pth10.steps.teragrep.bloomfilter.factory.TableSQLFactory;
 import com.typesafe.config.Config;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -59,45 +58,102 @@ import java.util.Objects;
 public final class BloomFilterTable {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(BloomFilterTable.class);
-    private final String createTableSQL;
     private final Connection connection;
+    private final Config config;
+    private final boolean ignoreConstraints;
 
     public BloomFilterTable(Config config) {
-        this(new TableSQLFactory(config).configured(), new ConnectionFactory(config).configured());
+        this(new ConnectionFactory(config).configured(),config, false);
     }
 
     public BloomFilterTable(Config config, boolean ignoreConstraints) {
-        this(new TableSQLFactory(config, ignoreConstraints).configured(), new ConnectionFactory(config).configured());
+        this(new ConnectionFactory(config).configured(), config, ignoreConstraints);
     }
 
-    public BloomFilterTable(String createTableSQL, Connection connection) {
-        this.createTableSQL = createTableSQL;
+    public BloomFilterTable(Connection connection, Config config, boolean ignoreConstraints) {
         this.connection = connection;
+        this.config = config;
+        this.ignoreConstraints = ignoreConstraints;
     }
 
     public void create() {
-        try (final PreparedStatement stmt = connection.prepareStatement(createTableSQL)) {
+        final String sql = createTableSQL();
+        try (final PreparedStatement stmt = connection.prepareStatement(sql)) {
             stmt.execute();
             connection.commit();
-            LOGGER.debug("Create table SQL <{}>", createTableSQL);
+            LOGGER.debug("Create table SQL <{}>", sql);
         }
         catch (SQLException e) {
             throw new RuntimeException("Error creating bloom filter table: " + e);
         }
     }
 
+    private String createTableSQL() {
+        final String sql;
+        final String validName = tableName();
+        if (ignoreConstraints) {
+            LOGGER.warn("Ignore database constraints=true");
+            sql = "CREATE TABLE IF NOT EXISTS `" + validName + "`("
+                    + "`id` BIGINT UNSIGNED NOT NULL auto_increment PRIMARY KEY,"
+                    + "`partition_id` BIGINT UNSIGNED NOT NULL UNIQUE," + "`filter_type_id` BIGINT UNSIGNED NOT NULL,"
+                    + "`filter` LONGBLOB NOT NULL);";
+        }
+        else {
+            final String validJournalDBName = journalDBName();
+            sql = "CREATE TABLE IF NOT EXISTS `" + validName + "`("
+                    + "`id` BIGINT UNSIGNED NOT NULL auto_increment PRIMARY KEY,"
+                    + "`partition_id` BIGINT UNSIGNED NOT NULL UNIQUE," + "`filter_type_id` BIGINT UNSIGNED NOT NULL,"
+                    + "`filter` LONGBLOB NOT NULL," + "CONSTRAINT `" + validName
+                    + "_ibfk_1` FOREIGN KEY (filter_type_id) REFERENCES filtertype (id)" + "ON DELETE CASCADE,"
+                    + "CONSTRAINT `" + validName + "_ibfk_2` FOREIGN KEY (partition_id) REFERENCES "
+                    + validJournalDBName + ".logfile (id)" + "ON DELETE CASCADE" + ");";
+        }
+        return sql;
+    }
+
+    private String tableName() {
+        final String tableName;
+        final String BLOOM_TABLE_NAME_ITEM = "dpl.pth_06.bloom.table.name";
+        if (config.hasPath(BLOOM_TABLE_NAME_ITEM)) {
+            final String tableNameFromConfig = config.getString(BLOOM_TABLE_NAME_ITEM);
+            if (tableNameFromConfig == null || tableNameFromConfig.isEmpty()) {
+                throw new RuntimeException("name <" + tableNameFromConfig + "> was null or empty");
+            }
+            tableName = tableNameFromConfig.replaceAll("\\s", "").trim();
+        }
+        else {
+            throw new RuntimeException("Missing configuration item <" + BLOOM_TABLE_NAME_ITEM + ">");
+        }
+
+        return new ValidTableName(tableName).name();
+    }
+
+    private String journalDBName() {
+        final String journalDBName;
+        final String JOURNALDB_TABLE_NAME_ITEM = "dpl.pth_06.archive.db.journaldb.name";
+        if (config.hasPath(JOURNALDB_TABLE_NAME_ITEM)) {
+            final String journalDBNameFromConfig = config.getString(JOURNALDB_TABLE_NAME_ITEM);
+            if (journalDBNameFromConfig == null || journalDBNameFromConfig.isEmpty()) {
+                throw new RuntimeException("Journaldb name was not configured.");
+            }
+            journalDBName = journalDBNameFromConfig;
+        }
+        else {
+            throw new RuntimeException("Missing configuration item: '" + JOURNALDB_TABLE_NAME_ITEM + "'.");
+        }
+        return new ValidTableName(journalDBName).name();
+    }
+
     @Override
     public boolean equals(final Object object) {
-        if (this == object)
-            return true;
-        if (object == null || getClass() != object.getClass())
-            return false;
+        if (this == object) return true;
+        if (object == null || getClass() != object.getClass()) return false;
         final BloomFilterTable cast = (BloomFilterTable) object;
-        return Objects.equals(createTableSQL, cast.createTableSQL) && Objects.equals(connection, cast.connection);
+        return ignoreConstraints == cast.ignoreConstraints && Objects.equals(connection, cast.connection) && Objects.equals(config, cast.config);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(createTableSQL, connection);
+        return Objects.hash(connection, config, ignoreConstraints);
     }
 }

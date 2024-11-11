@@ -45,14 +45,19 @@
  */
 package com.teragrep.pth10.steps.teragrep.bloomfilter;
 
+import com.teragrep.pth10.steps.teragrep.bloomfilter.factory.ConnectionFactory;
 import com.teragrep.pth10.steps.teragrep.bloomfilter.factory.FilterFieldsJsonObjectListFactory;
 import com.teragrep.pth10.steps.teragrep.bloomfilter.factory.FilterOptionValues;
+import com.teragrep.pth10.steps.teragrep.bloomfilter.factory.PatternFromConfigFactory;
 import com.typesafe.config.Config;
 import org.apache.spark.util.sketch.BloomFilter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.Serializable;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
 import java.util.*;
 
 public final class FilterTypes implements Serializable {
@@ -60,13 +65,20 @@ public final class FilterTypes implements Serializable {
     private static final Logger LOGGER = LoggerFactory.getLogger(FilterTypes.class);
 
     private final List<FilterOptionValues> filterValuesList;
+    private final String pattern;
+    private final Connection conn;
 
     public FilterTypes(Config config) {
-        this(new FilterFieldsJsonObjectListFactory(config).configured());
+        this(new FilterFieldsJsonObjectListFactory(config).configured(),
+                new PatternFromConfigFactory(config).configured(),
+                new ConnectionFactory(config).configured()
+        );
     }
 
-    public FilterTypes(List<FilterOptionValues> filterValuesList) {
+    public FilterTypes(List<FilterOptionValues> filterValuesList, String pattern, Connection conn) {
         this.filterValuesList = filterValuesList;
+        this.pattern = pattern;
+        this.conn = conn;
     }
 
     /**
@@ -101,20 +113,48 @@ public final class FilterTypes implements Serializable {
         return bitsizeToExpectedItemsMap;
     }
 
+    public void saveToDatabase() {
+        final SortedMap<Long, Double> filterSizeMap = sortedMap();
+        for (final Map.Entry<Long, Double> entry : filterSizeMap.entrySet()) {
+            if (LOGGER.isInfoEnabled()) {
+                LOGGER
+                        .info(
+                                "Writing filtertype (expected <[{}]>, fpp: <[{}]>, pattern: <[{}]>)", entry.getKey(),
+                                entry.getValue(), pattern
+                        );
+            }
+            final String sql = "INSERT IGNORE INTO `filtertype` (`expectedElements`, `targetFpp`, `pattern`) VALUES (?, ?, ?)";
+            try (final PreparedStatement stmt = conn.prepareStatement(sql)) {
+                stmt.setInt(1, entry.getKey().intValue()); // filtertype.expectedElements
+                stmt.setDouble(2, entry.getValue()); // filtertype.targetFpp
+                stmt.setString(3, pattern); // filtertype.pattern
+                stmt.executeUpdate();
+                stmt.clearParameters();
+                conn.commit();
+            }
+            catch (SQLException e) {
+                if (LOGGER.isErrorEnabled()) {
+                    LOGGER
+                            .error(
+                                    "Error writing filter[expected: <{}>, fpp: <{}>, pattern: <{}>] into database",
+                                    entry.getKey(), entry.getValue(), pattern
+                            );
+                }
+                throw new RuntimeException(e);
+            }
+        }
+    }
+
     @Override
     public boolean equals(final Object object) {
-        if (this == object)
-            return true;
-        if (object == null)
-            return false;
-        if (object.getClass() != this.getClass())
-            return false;
+        if (this == object) return true;
+        if (object == null || getClass() != object.getClass()) return false;
         final FilterTypes cast = (FilterTypes) object;
-        return filterValuesList.equals(cast.filterValuesList);
+        return Objects.equals(filterValuesList, cast.filterValuesList) && Objects.equals(pattern, cast.pattern) && Objects.equals(conn, cast.conn);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(filterValuesList);
+        return Objects.hash(filterValuesList, pattern, conn);
     }
 }

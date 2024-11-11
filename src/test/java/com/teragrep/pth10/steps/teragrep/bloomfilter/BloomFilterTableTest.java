@@ -151,6 +151,31 @@ class BloomFilterTableTest {
     }
 
     @Test
+    void testInvalidTableName() {
+        Properties properties = getDefaultProperties();
+        String invaliTableName= "Invalid@TableName";
+        properties.put("dpl.pth_06.bloom.table.name", invaliTableName);
+        Config config = ConfigFactory.parseProperties(properties);
+        BloomFilterTable table = new BloomFilterTable(config);
+        RuntimeException ex = Assertions.assertThrows(RuntimeException.class, table::create);
+        String expectedMessage = "Malformed table name <[Invalid@TableName]>, only use alphabets, numbers and _";
+        Assertions.assertEquals(expectedMessage, ex.getMessage());
+    }
+
+    @Test
+    void testInvalidJournalDBName() {
+        Properties properties = getDefaultProperties();
+        properties.put("dpl.pth_06.bloom.table.name", "test_table");
+        String invaliTableName= "InvalidJournalDB@TableName";
+        properties.put("dpl.pth_06.archive.db.journaldb.name", invaliTableName);
+        Config config = ConfigFactory.parseProperties(properties);
+        BloomFilterTable table = new BloomFilterTable(config);
+        RuntimeException ex = Assertions.assertThrows(RuntimeException.class, table::create);
+        String expectedMessage = "Malformed table name <[InvalidJournalDB@TableName]>, only use alphabets, numbers and _";
+        Assertions.assertEquals(expectedMessage, ex.getMessage());
+    }
+
+    @Test
     void testEquals() {
         Properties properties = getDefaultProperties();
         String tableName = "test_table";

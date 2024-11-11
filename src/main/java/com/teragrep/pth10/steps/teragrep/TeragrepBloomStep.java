@@ -48,7 +48,6 @@ package com.teragrep.pth10.steps.teragrep;
 import com.teragrep.functions.dpf_03.BloomFilterAggregator;
 import com.teragrep.pth10.steps.AbstractStep;
 import com.teragrep.pth10.steps.teragrep.aggregate.ColumnBinaryListingDataset;
-import com.teragrep.pth10.steps.teragrep.bloomfilter.FilterTypes;
 import com.teragrep.pth10.steps.teragrep.bloomfilter.factory.*;
 import com.typesafe.config.Config;
 import org.apache.spark.sql.Dataset;
@@ -57,10 +56,6 @@ import org.apache.spark.sql.functions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.SQLException;
-import java.util.Map;
 import java.util.SortedMap;
 
 /**
@@ -132,8 +127,12 @@ public final class TeragrepBloomStep extends AbstractStep {
      * @return Dataset unmodified
      */
     private Dataset<Row> createBloomFilter(Dataset<Row> dataset) {
-        writeFilterTypes();
-        new BloomFilterTableFactory(zeppelinConfig).configured().create();
+        new FilterTypesFactory(zeppelinConfig)
+                .configured()
+                .saveToDatabase();
+        new BloomFilterTableFactory(zeppelinConfig)
+                .configured()
+                .create();
         final BloomFilterForeachPartitionFunctionFactory foreachFunctionFactory = new BloomFilterForeachPartitionFunctionFactory(
                 this.zeppelinConfig
         );
@@ -148,8 +147,12 @@ public final class TeragrepBloomStep extends AbstractStep {
      * @return Dataset unmodified
      */
     private Dataset<Row> updateBloomFilter(Dataset<Row> dataset) {
-        writeFilterTypes();
-        new BloomFilterTableFactory(zeppelinConfig).configured().create();
+        new FilterTypesFactory(zeppelinConfig)
+                .configured()
+                .saveToDatabase();
+        new BloomFilterTableFactory(zeppelinConfig)
+                .configured()
+                .create();
         final BloomFilterForeachPartitionFunctionFactory foreachFunctionFactory = new BloomFilterForeachPartitionFunctionFactory(
                 zeppelinConfig,
                 true
@@ -179,40 +182,5 @@ public final class TeragrepBloomStep extends AbstractStep {
                 .dataset()
                 .groupBy("partition")
                 .agg(bloomFilterAggregator.toColumn().as("bloomfilter"));
-    }
-
-    private void writeFilterTypes() {
-        final FilterTypes filterTypes = new FilterTypesFactory(zeppelinConfig).configured();
-        final Connection connection = new ConnectionFactory(zeppelinConfig).configured();
-        final String pattern = new PatternFromConfigFactory(zeppelinConfig).configured();
-        final SortedMap<Long, Double> filterSizeMap = filterTypes.sortedMap();
-        for (final Map.Entry<Long, Double> entry : filterSizeMap.entrySet()) {
-            if (LOGGER.isInfoEnabled()) {
-                LOGGER
-                        .info(
-                                "Writing filtertype (expected <[{}]>, fpp: <[{}]>, pattern: <[{}]>)", entry.getKey(),
-                                entry.getValue(), pattern
-                        );
-            }
-            final String sql = "INSERT IGNORE INTO `filtertype` (`expectedElements`, `targetFpp`, `pattern`) VALUES (?, ?, ?)";
-            try (final PreparedStatement stmt = connection.prepareStatement(sql)) {
-                stmt.setInt(1, entry.getKey().intValue()); // filtertype.expectedElements
-                stmt.setDouble(2, entry.getValue()); // filtertype.targetFpp
-                stmt.setString(3, pattern); // filtertype.pattern
-                stmt.executeUpdate();
-                stmt.clearParameters();
-                connection.commit();
-            }
-            catch (SQLException e) {
-                if (LOGGER.isErrorEnabled()) {
-                    LOGGER
-                            .error(
-                                    "Error writing filter[expected: <{}>, fpp: <{}>, pattern: <{}>] into database",
-                                    entry.getKey(), entry.getValue(), pattern
-                            );
-                }
-                throw new RuntimeException(e);
-            }
-        }
     }
 }

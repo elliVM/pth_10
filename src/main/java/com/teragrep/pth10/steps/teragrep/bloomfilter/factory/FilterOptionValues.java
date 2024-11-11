@@ -45,9 +45,11 @@
  */
 package com.teragrep.pth10.steps.teragrep.bloomfilter.factory;
 
+import org.jetbrains.annotations.NotNull;
+
 import java.util.Objects;
 
-public final class FilterOptionValues {
+public final class FilterOptionValues  implements Comparable<FilterOptionValues> {
 
     private final Long expected;
     private final Double fpp;
@@ -84,5 +86,10 @@ public final class FilterOptionValues {
     @Override
     public int hashCode() {
         return Objects.hash(expected, fpp);
+    }
+
+    @Override
+    public int compareTo(final FilterOptionValues filterOptionValues) {
+        return Long.compare(expected, filterOptionValues.expected);
     }
 }
