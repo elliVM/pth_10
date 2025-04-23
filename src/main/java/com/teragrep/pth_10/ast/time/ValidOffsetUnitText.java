@@ -45,59 +45,43 @@
  */
 package com.teragrep.pth_10.ast.time;
 
-import com.teragrep.pth10.ast.TextString;
-import com.teragrep.pth10.ast.UnquotedText;
-
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
+import com.teragrep.pth_10.ast.Text;
 import java.util.Objects;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
-public final class RelativeTimestamp implements DPLTimestamp {
+public final class ValidOffsetUnitText implements Text {
 
-    private final ValidRelativeTimestampText offsetString;
-    private final ZonedDateTime baseTime;
+    private final Text origin;
+    private final Pattern pattern;
 
-    public RelativeTimestamp(final String offsetString, final ZoneId zoneId) {
-        this(new ValidRelativeTimestampText(new UnquotedText(new TextString(offsetString))), ZonedDateTime.now(zoneId));
+    public ValidOffsetUnitText(final Text origin) {
+        this(origin, Pattern.compile("([a-zA-Z]+)"));
     }
 
-    public RelativeTimestamp(final String offsetString, final ZonedDateTime baseTime) {
-        this(new ValidRelativeTimestampText(new UnquotedText(new TextString(offsetString))), baseTime);
-    }
-
-    public RelativeTimestamp(final ValidRelativeTimestampText offsetString, final ZonedDateTime baseTime) {
-        this.offsetString = offsetString;
-        this.baseTime = baseTime;
+    public ValidOffsetUnitText(final Text origin, final Pattern pattern) {
+        this.origin = origin;
+        this.pattern = pattern;
     }
 
     @Override
-    public ZonedDateTime zonedDateTime() {
-        if (!isValid()) {
-            throw new RuntimeException("Timestamp did not contain a valid relative timestamp information");
+    public String read() {
+        final String originString = origin.read();
+        final Matcher matcher = pattern.matcher(originString);
+        final String updatedString;
+        if (originString.toLowerCase().startsWith("now")) {
+            updatedString = "now";
         }
-        final String validOffset = offsetString.read();
-        final DPLTimestamp offsetTimestamp = new OffsetTimestamp(validOffset, baseTime);
-        final DPLTimestamp snappedTimestamp = new SnappedTimestamp(validOffset, offsetTimestamp);
-        final ZonedDateTime updatedTime;
-        if (snappedTimestamp.isValid()) {
-            updatedTime = snappedTimestamp.zonedDateTime();
+        else if (originString.toLowerCase().contains("now")) {
+            throw new IllegalArgumentException("timestamp 'now' should not have any values before it");
         }
         else {
-            updatedTime = offsetTimestamp.zonedDateTime();
+            if (!matcher.find()) {
+                throw new IllegalArgumentException("Text <" + originString + "> did not contain a valid offset unit");
+            }
+            updatedString = matcher.group(); // next group of alphabetical characters
         }
-        return updatedTime;
-    }
-
-    @Override
-    public boolean isValid() {
-        boolean isStub = true;
-        try {
-            offsetString.read();
-        }
-        catch (final IllegalArgumentException e) {
-            isStub = false;
-        }
-        return isStub;
+        return updatedString;
     }
 
     @Override
@@ -111,12 +95,12 @@ public final class RelativeTimestamp implements DPLTimestamp {
         if (getClass() != o.getClass()) {
             return false;
         }
-        final RelativeTimestamp other = (RelativeTimestamp) o;
-        return Objects.equals(offsetString, other.offsetString) && Objects.equals(baseTime, other.baseTime);
+        final ValidOffsetUnitText other = (ValidOffsetUnitText) o;
+        return Objects.equals(origin, other.origin) && Objects.equals(pattern, other.pattern);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(offsetString, baseTime);
+        return Objects.hash(origin, pattern);
     }
 }
