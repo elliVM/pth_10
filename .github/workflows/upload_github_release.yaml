@@ -1,0 +1,35 @@
+name: upload_github_release.yaml
+on:
+  release:
+    types: [ published ]
+
+jobs:
+  upload:
+    name: Upload
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Install test dependencies
+        run: cd / && sudo apt-get update && sudo apt-get install wget rpm2cpio && sudo wget -q https://download.rockylinux.org/pub/rocky/8/AppStream/x86_64/os/Packages/g/geolite2-city-20180605-1.el8.noarch.rpm && sudo wget -q https://download.rockylinux.org/pub/rocky/8/AppStream/x86_64/os/Packages/g/geolite2-country-20180605-1.el8.noarch.rpm && rpm2cpio geolite2-city-20180605-1.el8.noarch.rpm | sudo cpio -i --make-directories && rpm2cpio geolite2-country-20180605-1.el8.noarch.rpm | sudo cpio -i --make-directories
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          java-version: 8.0.292+10
+          distribution: 'adopt'
+
+      - name: Run CI
+        run: mvn --batch-mode clean verify
+
+      - name: Publish shaded jar as RPM to GitHub Assets
+        run: mvn --batch-mode -Drevision=${{ github.event.release.tag_name }} -Dsha1= -Dchangelist= -Dmaven.test.skip.exec=true clean package -Pbuild-shaded-jar && cd rpm/ && mvn --batch-mode -Drevision=${{ github.event.release.tag_name }} -Dsha1= -Dchangelist= -f rpm.pom.xml package
+
+      - name: Attach rpm to release
+        uses: softprops/action-gh-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          files: rpm/target/rpm/com.teragrep-pth_10/RPMS/noarch/com.teragrep-pth_10-*.noarch.rpm
+
