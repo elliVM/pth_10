@@ -51,30 +51,30 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 
-import java.time.Instant;
 import java.time.ZoneId;
+import java.time.ZonedDateTime;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class DPLTimestampImplTest {
 
-    private final ZoneId expectedZoneId = ZoneId.of("GMT+2");
+    private final ZoneId expectedZoneId = ZoneId.of("UTC");
 
     @Test
     public void testWithReadableTimeformat() {
         final String value = "2024-31-10";
         final String timeformat = "%Y-%d-%m";
-        final Long expected = 1730325600L;
-        final Instant instant = new DPLTimestampImpl(value, timeformat, expectedZoneId).zonedDateTime().toInstant();
-        Assertions.assertEquals(expected, instant.getEpochSecond());
+        final Long expected = 1730332800L;
+        final Long instant = new DPLTimestampImpl(value, timeformat, expectedZoneId).zonedDateTime().toEpochSecond();
+        Assertions.assertEquals(expected, instant);
     }
 
     @Test
     public void testWithReadableTimeformatAndIsLatest() {
         final String value = "2024-31-10";
         final String timeformat = "%Y-%d-%m";
-        final Long expected = 1730325600L;
+        final Long expected = 1730332800L;
         final RoundedUpTimestamp et = new RoundedUpTimestamp(new DPLTimestampImpl(value, timeformat, expectedZoneId));
-        Assertions.assertEquals(expected, et.zonedDateTime().toInstant().getEpochSecond());
+        Assertions.assertEquals(expected, et.zonedDateTime().toEpochSecond());
     }
 
     @Test
@@ -82,8 +82,8 @@ public class DPLTimestampImplTest {
         final String value = "1730325600";
         final String timeformat = "%s";
         final Long expected = 1730325600L;
-        final Instant et = new DPLTimestampImpl(value, timeformat, expectedZoneId).zonedDateTime().toInstant();
-        Assertions.assertEquals(expected, et.getEpochSecond());
+        final ZonedDateTime zonedDateTime = new DPLTimestampImpl(value, timeformat, expectedZoneId).zonedDateTime();
+        Assertions.assertEquals(expected, zonedDateTime.toEpochSecond());
     }
 
     @Test
@@ -92,7 +92,7 @@ public class DPLTimestampImplTest {
         final String timeformat = "%s";
         final Long expected = 1730325600L;
         final RoundedUpTimestamp et = new RoundedUpTimestamp(new DPLTimestampImpl(value, timeformat, expectedZoneId));
-        Assertions.assertEquals(expected, et.zonedDateTime().toInstant().getEpochSecond());
+        Assertions.assertEquals(expected, et.zonedDateTime().toEpochSecond());
     }
 
     @Test
@@ -100,17 +100,17 @@ public class DPLTimestampImplTest {
         final String value = "2024-10-31T10:10:10Z";
         final String timeformat = "";
         final Long expected = 1730369410L;
-        final Instant et = new DPLTimestampImpl(value, timeformat, expectedZoneId).zonedDateTime().toInstant();
-        Assertions.assertEquals(expected, et.getEpochSecond());
+        final ZonedDateTime zonedDateTime = new DPLTimestampImpl(value, timeformat, expectedZoneId).zonedDateTime();
+        Assertions.assertEquals(expected, zonedDateTime.toEpochSecond());
     }
 
     @Test
     public void testDefaultTimeformatAndIsLatest() {
         final String value = "2024-10-31T10:10:10.001";
         final String timeformat = "";
-        final Long expected = 1730362210L + 1L;
+        final Long expected = 1730369410 + 1L;
         final RoundedUpTimestamp et = new RoundedUpTimestamp(new DPLTimestampImpl(value, timeformat, expectedZoneId));
-        Assertions.assertEquals(expected, et.zonedDateTime().toInstant().getEpochSecond());
+        Assertions.assertEquals(expected, et.zonedDateTime().toEpochSecond());
     }
 
     @Test

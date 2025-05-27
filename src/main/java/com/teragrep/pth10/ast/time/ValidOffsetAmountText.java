@@ -73,7 +73,7 @@ public final class ValidOffsetAmountText implements Text {
         else {
             amountString = originString;
         }
-        LOGGER.info("Getting amount value from <{}>", amountString);
+        LOGGER.debug("Getting amount value from <{}>", amountString);
         final String updatedString;
         if (amountString.isEmpty() || "now".equalsIgnoreCase(amountString)) {
             updatedString = "0";
@@ -118,13 +118,13 @@ public final class ValidOffsetAmountText implements Text {
         // epoch seconds range supported by ZonedDateTime
         final long maxEpochSeconds = 999999999L;
         final long minEpochSeconds = -999999999L;
-        LOGGER.info("Parsed value <{}>", value);
+        LOGGER.debug("Parsed value <{}>", value);
         if (value > maxEpochSeconds) {
-            LOGGER.info("value over max value");
+            LOGGER.info("value <{}> over max value <{}>, capping to max value", value, maxEpochSeconds);
             betweenMinMaxString = String.format("%s", maxEpochSeconds);
         }
         else if (value < minEpochSeconds) {
-            LOGGER.info("value under min value");
+            LOGGER.info("value <{}> under min value <{}>, capping to min value", value, minEpochSeconds);
             betweenMinMaxString = String.format("%s", minEpochSeconds);
         }
         else {
