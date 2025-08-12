@@ -50,7 +50,6 @@ import com.teragrep.pth_03.antlr.DPLLexer;
 import org.apache.spark.sql.Column;
 import org.apache.spark.sql.functions;
 import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
