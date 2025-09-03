@@ -89,7 +89,7 @@ public class TimechartTest {
         Assertions.assertEquals("window(_time, 300000000, 300000000, 0) AS window", tcs.getSpan().toString());
         Assertions
                 .assertEquals(
-                        "sumaggregator(encodeusingserializer(input[0, java.lang.Object, true], false) AS value, decodeusingserializer(input[0, binary, true], com.teragrep.pth_10.ast.commands.aggregate.UDAFs.BufferClasses.SumBuffer, false), staticinvoke(class org.apache.spark.unsafe.types.UTF8String, StringType, fromString, input[0, java.lang.String, true], true, false, true)) AS `sum(sales)` AS sales",
+                        "sumaggregator(encodeusingserializer(input[0, java.lang.Object, true], false) AS value, decodeusingserializer(input[0, binary, true], com.teragrep.pth10.ast.commands.aggregate.UDAFs.BufferClasses.SumBuffer, false), staticinvoke(class org.apache.spark.unsafe.types.UTF8String, StringType, fromString, input[0, java.lang.String, true], true, false, true)) AS `sum(sales)` AS sales",
                         tcs.getAggCols().get(0).toString()
                 );
         Assertions.assertEquals("product", tcs.getDivByInsts().get(0));
@@ -115,7 +115,7 @@ public class TimechartTest {
         Assertions.assertEquals("window(_time, 300000000, 300000000, 0) AS window", tcs.getSpan().toString());
         Assertions
                 .assertEquals(
-                        "sumaggregator(encodeusingserializer(input[0, java.lang.Object, true], false) AS value, decodeusingserializer(input[0, binary, true], com.teragrep.pth_10.ast.commands.aggregate.UDAFs.BufferClasses.SumBuffer, false), staticinvoke(class org.apache.spark.unsafe.types.UTF8String, StringType, fromString, input[0, java.lang.String, true], true, false, true)) AS `sum(sales)` AS sales",
+                        "sumaggregator(encodeusingserializer(input[0, java.lang.Object, true], false) AS value, decodeusingserializer(input[0, binary, true], com.teragrep.pth10.ast.commands.aggregate.UDAFs.BufferClasses.SumBuffer, false), staticinvoke(class org.apache.spark.unsafe.types.UTF8String, StringType, fromString, input[0, java.lang.String, true], true, false, true)) AS `sum(sales)` AS sales",
                         tcs.getAggCols().get(0).toString()
                 );
         Assertions.assertEquals(0, tcs.getDivByInsts().size());
