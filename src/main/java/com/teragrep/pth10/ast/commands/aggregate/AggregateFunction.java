@@ -655,8 +655,8 @@ public class AggregateFunction extends DPLParserBaseVisitor<Node> {
     }
 
     /**
-     * -- Aggregate method: List -- Uses the {@link com.teragrep.pth10.ast.commands.aggregate.UDAFs.ValuesAggregator}
-     * in <code>LIST</code> mode to perform the aggregation.
+     * -- Aggregate method: List -- Uses the {@link com.teragrep.pth10.ast.commands.aggregate.UDAFs.ValuesAggregator} in
+     * <code>LIST</code> mode to perform the aggregation.
      */
     public Node visitAggregateMethodList(DPLParser.AggregateMethodListContext ctx) {
         Node rv = aggregateMethodListEmitCatalyst(ctx);
@@ -709,9 +709,9 @@ public class AggregateFunction extends DPLParserBaseVisitor<Node> {
 
     /**
      * -- Aggregate method: Percentile -- Can calculate the percentile multiple different ways, exactperc(), upperperc()
-     * and perc(). Uses the {@link com.teragrep.pth10.ast.commands.aggregate.UDAFs.ExactPercentileAggregator} to
-     * perform exactperc(), and {@link com.teragrep.pth10.ast.commands.aggregate.utils.PercentileApprox} for
-     * upperperc() and perc().
+     * and perc(). Uses the {@link com.teragrep.pth10.ast.commands.aggregate.UDAFs.ExactPercentileAggregator} to perform
+     * exactperc(), and {@link com.teragrep.pth10.ast.commands.aggregate.utils.PercentileApprox} for upperperc() and
+     * perc().
      */
     public Node visitAggregateMethodPercentileVariable(DPLParser.AggregateMethodPercentileVariableContext ctx) {
         LOGGER.debug("Visiting percX(Y)");
