@@ -53,7 +53,6 @@
     <teragrep.jpr_01.version>3.1.1</teragrep.jpr_01.version>
     <teragrep.jue_01.version>0.4.3</teragrep.jue_01.version>
     <teragrep.pth_03.version>9.3.0</teragrep.pth_03.version>
-    <teragrep.pth_06.version>3.6.3</teragrep.pth_06.version>
     <teragrep.pth_15.version>2.0.0</teragrep.pth_15.version>
     <teragrep.rlp_01.version>4.0.1</teragrep.rlp_01.version>
     <teragrep.rlp_03.version>9.0.0</teragrep.rlp_03.version>
@@ -135,7 +134,7 @@
     <dependency>
       <groupId>com.teragrep</groupId>
       <artifactId>pth_06</artifactId>
-      <version>${teragrep.pth_06.version}</version>
+      <version>3.7.0-RC-elliVM</version>
     </dependency>
     <dependency>
       <groupId>com.teragrep</groupId>
@@ -262,6 +261,12 @@
       <version>2.0.16</version>
     </dependency>
   </dependencies>
+  <repositories>
+    <repository>
+      <id>github</id>
+      <url>https://maven.pkg.github.com/elliVM/pth_06</url>
+    </repository>
+  </repositories>
   <build>
     <directory>${project.basedir}/target</directory>
     <finalName>pth_10</finalName>
@@ -376,9 +381,6 @@
                   <message>All plugins are required to contain specific version.</message>
                   <unCheckedPluginList>org.apache.maven.plugins:maven-site-plugin,org.apache.maven.plugins:maven-resources-plugin,org.apache.maven.plugins:maven-clean-plugin,org.apache.maven.plugins:maven-install-plugin,org.apache.maven.plugins:maven-deploy-plugin</unCheckedPluginList>
                 </requirePluginVersions>
-                <requireNoRepositories>
-                  <message>Do not use any external repositories.</message>
-                </requireNoRepositories>
               </rules>
             </configuration>
           </execution>
