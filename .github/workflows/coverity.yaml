@@ -26,7 +26,10 @@ jobs:
         uses: actions/setup-java@v4
         with:
           java-version: 11
-          distribution: 'adopt'
+          distribution: 'temurin'
+          server-id: github
+          server-username: GITHUB_ACTOR
+          server-password: ${{ secrets.GH_ACCESS_TOKEN }}
 
       - name: Cache Local Maven Repository
         uses: actions/cache@v4
