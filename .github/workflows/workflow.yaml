@@ -30,7 +30,12 @@ jobs:
 
       - name: Verify loaded token
         run: | 
-           echo "Token prefix: ${GH_PACKAGES_TOKEN:0:4}****"
+          if [ -z "${GH_PACKAGES_TOKEN}" ]; then
+            echo "GH_PACKAGES_TOKEN not set"
+            exit 1
+          else
+            echo "GH_PACKAGES_TOKEN is set"
+          fi
         env:
           GH_PACKAGES_TOKEN: ${{ secrets.GH_PACKAGES_TOKEN }}
 
