@@ -1,0 +1,38 @@
+name: Workflow
+on: push
+
+jobs:
+  upload:
+    name: Upload
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Cache Local Maven Repository
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          java-version: 11
+          distribution: 'temurin'
+          server-id: github
+          server-username: GITHUB_ACTOR
+          server-password: ${{ secrets.GH_PACKAGES_TOKEN }}
+
+      - name: Verify loaded token
+        run: | 
+           echo "Token prefix: ${GH_PACKAGES_TOKEN:0:4}****"
+        env:
+          GH_PACKAGES_TOKEN: ${{ secrets.GH_PACKAGES_TOKEN }}
+
+      - name: Install
+        run: mvn --batch-mode clean install -DskipTests
