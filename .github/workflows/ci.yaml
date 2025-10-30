@@ -10,20 +10,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Cache Local Maven Repository
-        uses: actions/cache@v4
-        with:
-          path: ~/.m2/repository
-          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
-
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
           java-version: 11
           distribution: 'temurin'
           server-id: github
-          settings-path: ${{ github.workspace }}
-          token: ${{ secrets.GH_PACKAGESS_TOKEN }}
+          server-username: MAVEN_USER
+          server-password: MAVEN_PASSWORD
+        env:
+          MAVEN_USER: ${{ github.actor }}
+          MAVEN_PASSWORD: ${{ secrets.GH_PACKAGES_TOKEN }}
 
       - name: Configure Maven Settings
         run: cat ${{ github.workspace }}/settings.xml
