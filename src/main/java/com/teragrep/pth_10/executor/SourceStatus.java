@@ -56,7 +56,10 @@ public final class SourceStatus {
     private static final Logger LOGGER = LoggerFactory.getLogger(SourceStatus.class);
 
     public static boolean isQueryDone(Config config, StreamingQuery outQ) {
-        if (config.getBoolean("dpl.pth_06.archive.enabled") || config.getBoolean("dpl.pth_06.kafka.enabled")) {
+        if (
+            config.getBoolean("dpl.pth_06.hbase.enabled") || config.getBoolean("dpl.pth_06.archive.enabled")
+                    || config.getBoolean("dpl.pth_06.kafka.enabled")
+        ) {
             boolean queryDone = true;
             for (int i = 0; i < outQ.lastProgress().sources().length; i++) {
                 String startOffset = outQ.lastProgress().sources()[i].startOffset();

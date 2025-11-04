@@ -163,6 +163,54 @@ public class DPLDatasource {
             }
         }
 
+        final boolean hbaseEnabled;
+        if (
+            config.hasPath("dpl.pth_06.hbase.enabled") && config.getBoolean("dpl.pth_06.hbase.enabled")
+                    && config.getBoolean("dpl.pth_06.archive.enabled")
+        ) {
+            LOGGER.debug("HBase is enabled");
+            hbaseEnabled = true;
+            reader = reader.option("hbase.enabled", "true");
+        }
+        else {
+            hbaseEnabled = false;
+            reader = reader.option("hbase.enabled", "false");
+        }
+
+        // set hbase options if enabled
+        if (hbaseEnabled) {
+            if (config.hasPath("dpl.pth_06.hbase.tablename")) {
+                final String tableName = config.getString("dpl.pth_06.hbase.tablename");
+                LOGGER.debug("dpl.pth_06.hbase.tablename=<[{}]>", tableName);
+                reader = reader.option("hbase.tablename", tableName);
+            }
+            if (config.hasPath("dpl.pth_06.hbase.master.hostname")) {
+                final String hostName = config.getString("dpl.pth_06.hbase.master.hostname");
+                LOGGER.debug("dpl.pth_06.hbase.master.hostname=<[{}]>", hostName);
+                reader = reader.option("hbase.master.hostname", hostName);
+            }
+            if (config.hasPath("dpl.pth_06.hbase.regionserver.hostname")) {
+                final String regionServerHostName = config.getString("dpl.pth_06.hbase.regionserver.hostname");
+                LOGGER.debug("dpl.pth_06.hbase.regionserver.hostname=<[{}]>", regionServerHostName);
+                reader = reader.option("hbase.regionserver.hostname", regionServerHostName);
+            }
+            if (config.hasPath("dpl.pth_06.hbase.zookeeper.quorum")) {
+                final String zooKeeperQuorum = config.getString("dpl.pth_06.hbase.zookeeper.quorum");
+                LOGGER.debug("dpl.pth_06.hbase.zookeeper.quorum=<[{}]>", zooKeeperQuorum);
+                reader = reader.option("hbase.zookeeper.quorum", zooKeeperQuorum);
+            }
+            if (config.hasPath("dpl.pth_06.hbase.zookeeper.clientPort")) {
+                final String zooKeeperClientPort = config.getString("dpl.pth_06.hbase.zookeeper.clientPort");
+                LOGGER.debug("dpl.pth_06.hbase.zookeeper.clientPort=<[{}]>", zooKeeperClientPort);
+                reader = reader.option("hbase.zookeeper.clientPort", zooKeeperClientPort);
+            }
+            if (config.hasPath("dpl.pth_06.hbase.scanCacheSize")) {
+                final String scanCacheSize = config.getString("dpl.pth_06.hbase.scanCacheSize");
+                LOGGER.debug("dpl.pth_06.hbase.scanCacheSize=<[{}]>", scanCacheSize);
+                reader = reader.option("hbase.scanCacheSize", scanCacheSize);
+            }
+        }
+
         boolean bloomEnabled = false;
         if (config.hasPath("dpl.pth_06.bloom.enabled")) {
             bloomEnabled = config.getBoolean("dpl.pth_06.bloom.enabled");
