@@ -52,8 +52,8 @@ public interface DataSourceState {
 
     public abstract boolean isStub();
 
-    public HikariDataSource dataSource();
+    public abstract HikariDataSource dataSource();
 
-    public Config config();
+    public abstract Config config();
 
 }
