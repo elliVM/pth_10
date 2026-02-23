@@ -66,7 +66,7 @@ public final class LazyConnectionSource implements ConnectionSource {
     public Connection get() {
         final Connection connection;
         try {
-            connection = ExecutorDataSourceRegistry.connection(config);
+            connection = ConnectionPoolSingleton.connection(config);
         }
         catch (final SQLException e) {
             throw new RuntimeException("Error getting connection from source: " + e.getMessage(), e);

@@ -56,13 +56,13 @@ import java.sql.SQLException;
 /**
  * Provides a JVM shared HikariDatasource for a spark executor
  */
-public final class ExecutorDataSourceRegistry {
+public final class ConnectionPoolSingleton {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(ExecutorDataSourceRegistry.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(ConnectionPoolSingleton.class);
     private static HikariDataSource dataSource;
     private static Config initializedWith;
 
-    private ExecutorDataSourceRegistry() {
+    private ConnectionPoolSingleton() {
         // blocks initialization
     }
 

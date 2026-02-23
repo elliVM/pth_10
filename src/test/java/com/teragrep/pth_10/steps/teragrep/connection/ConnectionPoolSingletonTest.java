@@ -58,7 +58,7 @@ import java.util.UUID;
 /**
  * Note that this object is static
  */
-public final class ExecutorDataSourceRegistryTest {
+public final class ConnectionPoolSingletonTest {
 
     private static final String username = "testuser";
     private static final String password = "testpass";
@@ -67,14 +67,14 @@ public final class ExecutorDataSourceRegistryTest {
 
     @BeforeEach
     public void initialize() {
-        ExecutorDataSourceRegistry.resetForTest();
+        ConnectionPoolSingleton.resetForTest();
     }
 
     @Test
     public void testInitializesOnFirstCall() {
         final Config config = defaultConfig();
         final Connection connection = Assertions
-                .assertDoesNotThrow(() -> ExecutorDataSourceRegistry.connection(config));
+                .assertDoesNotThrow(() -> ConnectionPoolSingleton.connection(config));
         Assertions.assertNotNull(connection);
         Assertions.assertDoesNotThrow(connection::close);
     }
@@ -82,8 +82,8 @@ public final class ExecutorDataSourceRegistryTest {
     @Test
     public void testAllowsSameConfigTwice() {
         final Config config = defaultConfig();
-        final Connection c1 = Assertions.assertDoesNotThrow(() -> ExecutorDataSourceRegistry.connection(config));
-        final Connection c2 = Assertions.assertDoesNotThrow(() -> ExecutorDataSourceRegistry.connection(config));
+        final Connection c1 = Assertions.assertDoesNotThrow(() -> ConnectionPoolSingleton.connection(config));
+        final Connection c2 = Assertions.assertDoesNotThrow(() -> ConnectionPoolSingleton.connection(config));
         Assertions.assertNotNull(c1);
         Assertions.assertNotNull(c2);
         Assertions.assertDoesNotThrow(c1::close);
@@ -96,12 +96,12 @@ public final class ExecutorDataSourceRegistryTest {
         final Config config2 = ConfigFactory.parseProperties(new Properties());
         Assertions.assertNotEquals(config1, config2);
         Assertions.assertDoesNotThrow(() -> {
-            try (final Connection connection = ExecutorDataSourceRegistry.connection(config1)) {
+            try (final Connection connection = ConnectionPoolSingleton.connection(config1)) {
                 Assertions.assertFalse(connection.isClosed());
             }
         });
         final IllegalStateException exception = Assertions
-                .assertThrows(IllegalStateException.class, () -> ExecutorDataSourceRegistry.connection(config2));
+                .assertThrows(IllegalStateException.class, () -> ConnectionPoolSingleton.connection(config2));
         final String expected = "Datasource was already initialized with a different configuration";
         Assertions.assertEquals(expected, exception.getMessage());
     }
