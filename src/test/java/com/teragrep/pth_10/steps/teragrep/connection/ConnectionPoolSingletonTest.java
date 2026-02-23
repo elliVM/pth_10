@@ -73,8 +73,7 @@ public final class ConnectionPoolSingletonTest {
     @Test
     public void testInitializesOnFirstCall() {
         final Config config = defaultConfig();
-        final Connection connection = Assertions
-                .assertDoesNotThrow(() -> ConnectionPoolSingleton.connection(config));
+        final Connection connection = Assertions.assertDoesNotThrow(() -> ConnectionPoolSingleton.connection(config));
         Assertions.assertNotNull(connection);
         Assertions.assertDoesNotThrow(connection::close);
     }
