@@ -46,51 +46,39 @@
 package com.teragrep.pth_10.steps.teragrep.connection;
 
 import com.typesafe.config.Config;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.zaxxer.hikari.HikariDataSource;
 
-import java.sql.Connection;
-import java.sql.SQLException;
+public final class InitializedDataSourceState implements DataSourceState {
 
-/**
- * Provides Connection objects from a static HikariCP datasource.
- * <p>
- * Methods connection() and resetForTesting() are thread locked on the class level
- */
-public final class ConnectionPoolSingleton {
+    private final HikariDataSource dataSource;
+    private final Config config;
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(ConnectionPoolSingleton.class);
-    private static DataSourceState state = new StubDataSourceState();
-
-    private ConnectionPoolSingleton() {
-        // blocks accidental initialization
+    public InitializedDataSourceState(final Config config) {
+        this(new DataSourceFromConfig(config), config);
     }
 
-    /**
-     * Gets a Connection instance using a given config to instantiate a static connection pool.
-     *
-     * @param config config that is used to configure the connection pool, cannot change after initialization
-     * @return Connection instance form the pool
-     * @throws SQLException          if there is an exception getting an SQL connection from the pool
-     * @throws IllegalStateException if the config is changed after initialization
-     */
-    public static synchronized Connection connection(final Config config) throws SQLException, IllegalStateException {
-        LOGGER.debug("thread entered lock block");
-        if (state.isStub()) {
-            state = new InitializedDataSourceState(config);
-        }
-        else if (!state.config().equals(config)) {
-            throw new IllegalStateException("Datasource was already initialized with a different config");
-        }
-        return state.dataSource().getConnection();
+    private InitializedDataSourceState(final DataSourceFromConfig dataSourceFromConfig, final Config config) {
+        this(dataSourceFromConfig.get(), config);
     }
 
-    // only for testing
-    static synchronized void resetForTest() {
-        LOGGER.warn("resetForTest() called, this should only happen in a test case");
-        if (!state.isStub()) {
-            state.dataSource().close();
-        }
-        state = new StubDataSourceState();
+    private InitializedDataSourceState(final HikariDataSource dataSource, final Config config) {
+        this.dataSource = dataSource;
+        this.config = config;
     }
+
+    @Override
+    public boolean isStub() {
+        return false;
+    }
+
+    @Override
+    public HikariDataSource dataSource() {
+        return dataSource;
+    }
+
+    @Override
+    public Config config() {
+        return config;
+    }
+
 }

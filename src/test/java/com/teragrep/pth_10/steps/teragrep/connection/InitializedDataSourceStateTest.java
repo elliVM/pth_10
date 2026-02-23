@@ -55,14 +55,9 @@ import java.sql.Connection;
 import java.util.Properties;
 import java.util.UUID;
 
-/**
- * Note that this object is static
- */
-public final class ConnectionPoolSingletonTest {
+public final class InitializedDataSourceStateTest {
 
-    private static final String username = "testuser";
-    private static final String password = "testpass";
-    private static final String url = "jdbc:h2:mem:test_" + UUID.randomUUID()
+    private final String url = "jdbc:h2:mem:test_" + UUID.randomUUID()
             + ";MODE=MariaDB;DATABASE_TO_LOWER=TRUE;CASE_INSENSITIVE_IDENTIFIERS=TRUE";
 
     @BeforeEach
@@ -71,44 +66,31 @@ public final class ConnectionPoolSingletonTest {
     }
 
     @Test
-    public void testInitializesOnFirstCall() {
-        final Config config = defaultConfig();
-        final Connection connection = Assertions.assertDoesNotThrow(() -> ConnectionPoolSingleton.connection(config));
-        Assertions.assertNotNull(connection);
-        Assertions.assertDoesNotThrow(connection::close);
-    }
-
-    @Test
-    public void testAllowsSameConfigTwice() {
-        final Config config = defaultConfig();
-        final Connection c1 = Assertions.assertDoesNotThrow(() -> ConnectionPoolSingleton.connection(config));
-        final Connection c2 = Assertions.assertDoesNotThrow(() -> ConnectionPoolSingleton.connection(config));
-        Assertions.assertNotNull(c1);
-        Assertions.assertNotNull(c2);
-        Assertions.assertDoesNotThrow(c1::close);
-        Assertions.assertDoesNotThrow(c2::close);
-    }
-
-    @Test
-    public void throwsIfReinitializedWithDifferentConfig() {
-        final Config config1 = defaultConfig();
-        final Config config2 = ConfigFactory.parseProperties(new Properties());
-        Assertions.assertNotEquals(config1, config2);
+    public void testDataSource() {
+        final DataSourceState state = new InitializedDataSourceState(defaultConfig());
         Assertions.assertDoesNotThrow(() -> {
-            try (final Connection connection = ConnectionPoolSingleton.connection(config1)) {
-                Assertions.assertFalse(connection.isClosed());
+            try (final Connection conn = state.dataSource().getConnection()) {
+                Assertions.assertFalse(conn.isClosed());
             }
         });
-        final IllegalStateException exception = Assertions
-                .assertThrows(IllegalStateException.class, () -> ConnectionPoolSingleton.connection(config2));
-        final String expected = "Datasource was already initialized with a different config";
-        Assertions.assertEquals(expected, exception.getMessage());
     }
 
-    private static Config defaultConfig() {
+    @Test
+    public void testConfiguration() {
+        final DataSourceState state = new InitializedDataSourceState(defaultConfig());
+        Assertions.assertEquals(defaultConfig(), state.config());
+    }
+
+    @Test
+    public void testIsStub() {
+        final DataSourceState state = new InitializedDataSourceState(defaultConfig());
+        Assertions.assertFalse(state.isStub());
+    }
+
+    private Config defaultConfig() {
         final Properties properties = new Properties();
-        properties.put("dpl.pth_10.bloom.db.username", username);
-        properties.put("dpl.pth_10.bloom.db.password", password);
+        properties.put("dpl.pth_10.bloom.db.username", "testuser");
+        properties.put("dpl.pth_10.bloom.db.password", "testpass");
         properties.put("dpl.pth_06.bloom.db.url", url);
         return ConfigFactory.parseProperties(properties);
     }

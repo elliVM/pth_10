@@ -45,52 +45,37 @@
  */
 package com.teragrep.pth_10.steps.teragrep.connection;
 
-import com.typesafe.config.Config;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
-import java.sql.Connection;
-import java.sql.SQLException;
+import static org.junit.jupiter.api.Assertions.*;
 
-/**
- * Provides Connection objects from a static HikariCP datasource.
- * <p>
- * Methods connection() and resetForTesting() are thread locked on the class level
- */
-public final class ConnectionPoolSingleton {
+public final class StubDataSourceStateTest {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(ConnectionPoolSingleton.class);
-    private static DataSourceState state = new StubDataSourceState();
-
-    private ConnectionPoolSingleton() {
-        // blocks accidental initialization
+    @Test
+    public void testDataSource() {
+        final DataSourceState state = new StubDataSourceState();
+        final UnsupportedOperationException exception = assertThrows(
+                UnsupportedOperationException.class, state::dataSource
+        );
+        final String expected = "dataSource() not supported for StubDataSourceState";
+        Assertions.assertEquals(expected, exception.getMessage());
     }
 
-    /**
-     * Gets a Connection instance using a given config to instantiate a static connection pool.
-     *
-     * @param config config that is used to configure the connection pool, cannot change after initialization
-     * @return Connection instance form the pool
-     * @throws SQLException          if there is an exception getting an SQL connection from the pool
-     * @throws IllegalStateException if the config is changed after initialization
-     */
-    public static synchronized Connection connection(final Config config) throws SQLException, IllegalStateException {
-        LOGGER.debug("thread entered lock block");
-        if (state.isStub()) {
-            state = new InitializedDataSourceState(config);
-        }
-        else if (!state.config().equals(config)) {
-            throw new IllegalStateException("Datasource was already initialized with a different config");
-        }
-        return state.dataSource().getConnection();
+    @Test
+    public void testConfiguration() {
+        final DataSourceState state = new StubDataSourceState();
+        final UnsupportedOperationException exception = assertThrows(
+                UnsupportedOperationException.class, state::config
+        );
+        final String expected = "config() not supported for StubDataSourceState";
+        Assertions.assertEquals(expected, exception.getMessage());
     }
 
-    // only for testing
-    static synchronized void resetForTest() {
-        LOGGER.warn("resetForTest() called, this should only happen in a test case");
-        if (!state.isStub()) {
-            state.dataSource().close();
-        }
-        state = new StubDataSourceState();
+    @Test
+    public void testIsStub() {
+        final DataSourceState state = new StubDataSourceState();
+        ;
+        Assertions.assertTrue(state.isStub());
     }
 }
