@@ -46,7 +46,6 @@
 package com.teragrep.pth_10.steps.teragrep.connection;
 
 import com.typesafe.config.Config;
-import com.zaxxer.hikari.HikariDataSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -54,51 +53,45 @@ import java.sql.Connection;
 import java.sql.SQLException;
 
 /**
- * Test object to provide a thread safe, non-static version of a ConnectionSource if required for unit testing, avoids
- * concurrency issues. Can be closed and opened but a new instance is recommended.
+ * Test object to provide non-static version of a ConnectionSource if required for unit testing.
  */
 public final class TestingConnectionSource implements ConnectionSource {
 
     private final Logger LOGGER = LoggerFactory.getLogger(TestingConnectionSource.class);
-    private HikariDataSource dataSource;
-    private final Config config;
+    private final DataSourceState state;
+
+    public TestingConnectionSource() {
+        this(new StubDataSourceState());
+    }
 
     public TestingConnectionSource(final Config config) {
-        this.config = config;
+        this(new InitializedDataSourceState(config));
+    }
+
+    public TestingConnectionSource(final DataSourceState state) {
+        this.state = state;
     }
 
     @Override
     public Connection get() {
-        LOGGER.debug("connection() called");
-        final Connection connection;
+        LOGGER.debug("get() called");
+        if (state.isStub()) {
+            throw new IllegalStateException("Source was initialized with a stub state");
+        }
         try {
-            connection = source().getConnection();
+            return state.dataSource().getConnection();
         }
         catch (final SQLException e) {
             throw new RuntimeException("Error getting connection from source: " + e.getMessage(), e);
         }
-        return connection;
-    }
-
-    public synchronized boolean isInitialized() {
-        return dataSource != null;
-    }
-
-    private synchronized HikariDataSource source() {
-        if (dataSource == null) {
-            dataSource = new DataSourceFromConfig(config).get();
-            LOGGER.debug("datasource initialized");
-        }
-        return dataSource;
     }
 
     @Override
-    public synchronized void close() {
+    public void close() {
         LOGGER.debug("close() called");
-        if (dataSource != null) {
+        if (!state.isStub()) {
             LOGGER.debug("Closing datasource");
-            dataSource.close();
-            dataSource = null;
+            state.dataSource().close();
         }
     }
 }

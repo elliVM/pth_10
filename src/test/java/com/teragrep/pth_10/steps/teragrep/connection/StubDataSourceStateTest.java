@@ -75,7 +75,6 @@ public final class StubDataSourceStateTest {
     @Test
     public void testIsStub() {
         final DataSourceState state = new StubDataSourceState();
-        ;
         Assertions.assertTrue(state.isStub());
     }
 }
