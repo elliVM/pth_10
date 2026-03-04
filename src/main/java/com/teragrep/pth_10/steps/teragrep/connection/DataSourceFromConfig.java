@@ -86,6 +86,7 @@ final class DataSourceFromConfig implements Supplier<HikariDataSource> {
         hikariConfig.setConnectionTimeout(30000);
         hikariConfig.setValidationTimeout(5000);
         hikariConfig.setPoolName(sourceName);
+        hikariConfig.addDataSourceProperty("rewriteBatchStatements", "true");
         return new HikariDataSource(hikariConfig);
     }
 

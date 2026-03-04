@@ -46,6 +46,7 @@
 package com.teragrep.pth_10.steps.teragrep.connection;
 
 import com.typesafe.config.Config;
+import com.zaxxer.hikari.HikariDataSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -75,6 +76,7 @@ public final class ConnectionPoolSingleton {
      * @throws IllegalStateException if the config is changed after initialization
      */
     public static synchronized Connection connection(final Config config) throws SQLException, IllegalStateException {
+        long start = System.nanoTime();
         LOGGER.debug("thread entered lock block");
         if (state.isStub()) {
             state = new InitializedDataSourceState(config);
@@ -82,6 +84,7 @@ public final class ConnectionPoolSingleton {
         else if (!state.config().equals(config)) {
             throw new IllegalStateException("Datasource was already initialized with a different config");
         }
+        logDurationAndState(start);
         return state.dataSource().getConnection();
     }
 
@@ -92,5 +95,16 @@ public final class ConnectionPoolSingleton {
             state.dataSource().close();
         }
         state = new StubDataSourceState();
+    }
+
+    private static void logDurationAndState(final long startNano) {
+        final long duration = (System.nanoTime() - startNano) / 1000_000;
+        final HikariDataSource dataSource = state.dataSource();
+        LOGGER
+                .info(
+                        "connection acquired <{}>ms, active connections=<{}> idle connections=<{}>", duration,
+                        dataSource.getHikariPoolMXBean().getActiveConnections(),
+                        dataSource.getHikariPoolMXBean().getIdleConnections()
+                );
     }
 }

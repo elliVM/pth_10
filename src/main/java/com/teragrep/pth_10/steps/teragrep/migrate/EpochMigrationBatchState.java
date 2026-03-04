@@ -108,6 +108,10 @@ final class EpochMigrationBatchState {
         return batchCount > 0;
     }
 
+    long batchCount() {
+        return batchCount;
+    }
+
     BatchBindStep batch() {
         return batch;
     }

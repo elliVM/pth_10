@@ -63,6 +63,7 @@ import org.slf4j.LoggerFactory;
 
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.Iterator;
 import java.util.Objects;
 
@@ -97,6 +98,7 @@ final class EpochMigrationForeachPartitionFunction implements ForeachPartitionFu
 
     @Override
     public void call(final Iterator<Row> iter) {
+        final long start = System.nanoTime();
         try (final Connection conn = connectionSource.get()) {
             if (conn.getAutoCommit()) {
                 conn.setAutoCommit(false);
@@ -114,7 +116,8 @@ final class EpochMigrationForeachPartitionFunction implements ForeachPartitionFu
                 executeBatch(batchState, conn);
             }
             final long totalRows = batchState.totalAccepted();
-            LOGGER.info("epoch migration for each partition function finished total rows=<{}>", totalRows);
+            long duration = (System.nanoTime() - start) / 1000_000;
+            LOGGER.info("partition complete in <{}> ms, totalRows=<{}>", duration, totalRows);
         }
         catch (final SQLException e) {
             throw new RuntimeException("Exception during epoch migration: " + e.getMessage(), e);
@@ -122,16 +125,20 @@ final class EpochMigrationForeachPartitionFunction implements ForeachPartitionFu
     }
 
     private void executeBatch(final EpochMigrationBatchState batchState, final Connection conn) throws SQLException {
+        final long start = System.nanoTime();
+        final long batchCount = batchState.batchCount();
         try {
-            batchState.batch().execute();
+            final int[] batchResult = batchState.batch().execute();
+            logResult(batchResult);
             conn.commit();
-            LOGGER.debug("Commited full batch");
         }
         catch (final Exception e) {
             LOGGER.error("Error executing batch with message: <{}>", e.getMessage());
             conn.rollback();
             throw new SQLException(e);
         }
+        final long duration = (System.nanoTime() - start) / 1000_000;
+        LOGGER.info("batch executed size=<{}>, duration=<{}>", batchCount, duration);
     }
 
     private BatchBindStep baseBatch(final DSLContext ctx) {
@@ -145,6 +152,20 @@ final class EpochMigrationForeachPartitionFunction implements ForeachPartitionFu
                 .where(idField.eq(idParam).and(epochField.isNull()));
         LOGGER.trace("epoch migration for each partition function: batch query <{}>", baseQuery);
         return ctx.batch(baseQuery);
+    }
+
+    private void logResult(final int[] results) {
+        int success = 0;
+        int failure = 0;
+        for (final int r : results) {
+            if (r == Statement.EXECUTE_FAILED) {
+                failure++;
+            }
+            else {
+                success++;
+            }
+        }
+        LOGGER.info("Batch executed success=<{}>, failure=<{}>, size=<{}>", success, failure, results.length);
     }
 
     @Override
