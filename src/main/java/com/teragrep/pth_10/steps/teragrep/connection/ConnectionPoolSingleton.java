@@ -46,7 +46,6 @@
 package com.teragrep.pth_10.steps.teragrep.connection;
 
 import com.typesafe.config.Config;
-import com.zaxxer.hikari.HikariDataSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -99,12 +98,6 @@ public final class ConnectionPoolSingleton {
 
     private static void logDurationAndState(final long startNano) {
         final long duration = (System.nanoTime() - startNano) / 1000_000;
-        final HikariDataSource dataSource = state.dataSource();
-        LOGGER
-                .info(
-                        "connection acquired <{}>ms, active connections=<{}> idle connections=<{}>", duration,
-                        dataSource.getHikariPoolMXBean().getActiveConnections(),
-                        dataSource.getHikariPoolMXBean().getIdleConnections()
-                );
+        LOGGER.info("connection acquired <{}>", duration);
     }
 }
