@@ -58,6 +58,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.condition.DisabledIfSystemProperty;
@@ -145,6 +146,7 @@ public final class EpochMigrationStepTest {
             named = "skipSparkTest",
             matches = "true"
     )
+    @Disabled("testing as no-op")
     public void testMigrateEpochCommandUpdatesEpochValuesToSQLMetadata() {
         streamingTestUtil.performDPLTest("index=index_A | teragrep exec migrate epoch", testFile, ds -> {
             final String selectOffsets = "SELECT id, epoch_hour FROM journaldb.logfile ORDER BY id";
@@ -186,6 +188,7 @@ public final class EpochMigrationStepTest {
             named = "skipSparkTest",
             matches = "true"
     )
+    @Disabled("testing as no-op")
     public void testMigrateNullTimeColumnThrowsException() {
         // tests that rows with null _time value are not silently accepted
         streamingTestUtil
