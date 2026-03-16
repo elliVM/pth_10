@@ -55,7 +55,9 @@ import org.jooq.DSLContext;
 import org.jooq.Field;
 import org.jooq.Param;
 import org.jooq.Query;
+import org.jooq.Record;
 import org.jooq.SQLDialect;
+import org.jooq.UpdateSetMoreStep;
 import org.jooq.conf.Settings;
 import org.jooq.impl.DSL;
 import org.slf4j.Logger;
@@ -98,6 +100,36 @@ final class EpochMigrationForeachPartitionFunction implements ForeachPartitionFu
     @Override
     public void call(final Iterator<Row> iter) {
         LOGGER.info("EpochMigrationForeachPartitionFunction.call() called. no-op");
+        try (final Connection connection = connectionSource.get()) {
+            final DSLContext ctx = DSL.using(connection, SQLDialect.MYSQL, settings);
+            final Field<Long> epochField = DSL.field(DSL.name("epoch_hour"), Long.class);
+            final Field<Long> idField = DSL.field(DSL.name("id"), Long.class);
+            while (iter.hasNext()) {
+                final Row row = iter.next();
+                final String rawString = row.getString(row.fieldIndex("_raw"));
+                final EventMetadata metadata = new EventMetadataFromString(rawString);
+                final long epoch = row.getTimestamp(row.fieldIndex("_time")).toInstant().getEpochSecond();
+                final long id = Long.parseLong(row.getString(row.fieldIndex("partition")));
+                if (!metadata.isSyslog() && LOGGER.isInfoEnabled()) {
+                    LOGGER
+                            .info(
+                                    "Encountered non-syslog row id=<{}> using path extracted time value <{}> with precision of <{}> resulting epoch <{}>",
+                                    id, metadata.pathExtracted(), metadata.pathExtractedPrecision(), epoch
+                            );
+                }
+                try (
+                        final UpdateSetMoreStep<Record> step = ctx.update(DSL.table(DSL.name(journalDBName, "logfile"))).set(epochField, epoch)
+                ) {
+                    step.where(idField.eq(id).and(epochField.isNull())).execute();
+                }
+            }
+        }
+        catch (final SQLException exception) {
+            throw new RuntimeException(
+                    "Error executing epoch migration for each batch: " + exception.getMessage(),
+                    exception
+            );
+        }
     }
 
     private void executeBatch(final EpochMigrationBatchState batchState, final Connection conn) throws SQLException {

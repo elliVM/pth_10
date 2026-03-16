@@ -133,7 +133,6 @@ public final class EpochMigrationForeachPartitionFunctionTest {
     }
 
     @Test
-    @Disabled("testing as no-op")
     public void testPartialBatchIsExecuted() {
         final EpochMigrationForeachPartitionFunction foreachPartitionFunction = new EpochMigrationForeachPartitionFunction(
                 connectionSource,
@@ -150,7 +149,6 @@ public final class EpochMigrationForeachPartitionFunctionTest {
     }
 
     @Test
-    @Disabled("testing as no-op")
     public void testFullBatchesExecuted() {
         final EpochMigrationForeachPartitionFunction foreachPartitionFunction = new EpochMigrationForeachPartitionFunction(
                 connectionSource,
@@ -166,7 +164,6 @@ public final class EpochMigrationForeachPartitionFunctionTest {
     }
 
     @Test
-    @Disabled("testing as no-op")
     public void testMultipleBatchesExecuted() {
         final EpochMigrationForeachPartitionFunction foreachPartitionFunction = new EpochMigrationForeachPartitionFunction(
                 connectionSource,
