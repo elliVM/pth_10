@@ -97,28 +97,7 @@ final class EpochMigrationForeachPartitionFunction implements ForeachPartitionFu
 
     @Override
     public void call(final Iterator<Row> iter) {
-        try (final Connection conn = connectionSource.get()) {
-            if (conn.getAutoCommit()) {
-                conn.setAutoCommit(false);
-            }
-            final DSLContext ctx = DSL.using(conn, SQLDialect.MYSQL, settings);
-            EpochMigrationBatchState batchState = new EpochMigrationBatchState(baseBatch(ctx), batchSize);
-            while (iter.hasNext()) {
-                batchState = batchState.accept(iter.next());
-                if (batchState.isFull()) {
-                    executeBatch(batchState, conn);
-                    batchState = batchState.reset(baseBatch(ctx));
-                }
-            }
-            if (batchState.hasPendingRows()) {
-                executeBatch(batchState, conn);
-            }
-            final long totalRows = batchState.totalAccepted();
-            LOGGER.info("epoch migration for each partition function finished total rows=<{}>", totalRows);
-        }
-        catch (final SQLException e) {
-            throw new RuntimeException("Exception during epoch migration: " + e.getMessage(), e);
-        }
+        LOGGER.info("EpochMigrationForeachPartitionFunction.call() called. no-op");
     }
 
     private void executeBatch(final EpochMigrationBatchState batchState, final Connection conn) throws SQLException {
