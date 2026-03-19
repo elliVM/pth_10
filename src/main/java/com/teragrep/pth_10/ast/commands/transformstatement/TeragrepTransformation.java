@@ -63,7 +63,6 @@ import com.teragrep.pth_10.ast.commands.transformstatement.teragrep.TableNameFro
 import com.teragrep.pth_10.ast.ContextValue;
 import com.teragrep.pth_10.datasources.CustomDatasetImpl;
 import com.teragrep.pth_10.steps.CustomResultStep;
-import com.teragrep.pth_10.steps.stats.StatsStep;
 import com.teragrep.pth_10.steps.teragrep.*;
 import com.teragrep.pth_10.steps.teragrep.AbstractTokenizerStep;
 import com.teragrep.pth_10.steps.teragrep.TeragrepTokenizerStep;
@@ -73,8 +72,6 @@ import com.teragrep.pth_03.antlr.DPLLexer;
 import com.teragrep.pth_03.antlr.DPLParser;
 import com.teragrep.pth_03.antlr.DPLParserBaseVisitor;
 import com.teragrep.pth_03.shaded.org.antlr.v4.runtime.tree.TerminalNode;
-import org.apache.spark.sql.Column;
-import org.apache.spark.sql.functions;
 import org.apache.spark.sql.types.DataTypes;
 import org.apache.spark.sql.types.MetadataBuilder;
 import org.apache.spark.sql.types.StructField;
@@ -88,7 +85,6 @@ import javax.xml.parsers.ParserConfigurationException;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.List;
 
 /**
  * Class containing the visitor methods for all "| teragrep" subcommands
@@ -685,11 +681,7 @@ public class TeragrepTransformation extends DPLParserBaseVisitor<Node> {
 
     @Override
     public Node visitT_migrateParameter(final DPLParser.T_migrateParameterContext ctx) {
-        final TeragrepEpochMigrationStep epochMigrationStep = new TeragrepEpochMigrationStep(zplnConfig);
-        // count step for performance and circumventing issues caused by _raw data in interpreter
-        final List<Column> aggregationExpressions = Collections
-                .singletonList(functions.count(functions.col("_raw")).alias("count"));
-        final StatsStep countStep = new StatsStep(aggregationExpressions, Collections.emptyList());
+        final TeragrepEpochMigrationStep epochMigrationStep = new TeragrepEpochMigrationStep(catCtx, zplnConfig);
         // Create a step, that returns a Custom dataset containing the result message
         // instead of the whole dataset
         final CustomResultStep completedResultStep = new CustomResultStep(
@@ -700,6 +692,6 @@ public class TeragrepTransformation extends DPLParserBaseVisitor<Node> {
                         Instant.now(), "Epoch migration batch completed."
                 }), catCtx)
         );
-        return new StepListNode(Arrays.asList(epochMigrationStep, countStep, completedResultStep));
+        return new StepListNode(Arrays.asList(epochMigrationStep, completedResultStep));
     }
 }

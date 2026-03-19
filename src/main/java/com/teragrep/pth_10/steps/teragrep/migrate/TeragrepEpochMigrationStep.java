@@ -46,28 +46,35 @@
 package com.teragrep.pth_10.steps.teragrep.migrate;
 
 import com.teragrep.functions.dpf_02.AbstractStep;
+import com.teragrep.pth_10.ast.DPLParserCatalystContext;
 import com.typesafe.config.Config;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
+import org.apache.spark.sql.streaming.DataStreamWriter;
+import org.apache.spark.sql.streaming.StreamingQuery;
+import org.apache.spark.sql.streaming.StreamingQueryException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Objects;
+import java.util.UUID;
 
 public final class TeragrepEpochMigrationStep extends AbstractStep {
 
     private final Logger LOGGER = LoggerFactory.getLogger(TeragrepEpochMigrationStep.class);
+    private final DPLParserCatalystContext catCtx;
     private final Config config;
     private final String journaldbNameConfigItem;
 
-    public TeragrepEpochMigrationStep(final Config config) {
+    public TeragrepEpochMigrationStep(final DPLParserCatalystContext catCtx, final Config config) {
+        this.catCtx = catCtx;
         this.config = config;
         this.journaldbNameConfigItem = "dpl.archive.db.journaldb.name";
-        this.properties.add(CommandProperty.SEQUENTIAL_ONLY);
+        this.properties.add(CommandProperty.USES_INTERNAL_BATCHCOLLECT);
     }
 
     @Override
-    public Dataset<Row> get(final Dataset<Row> dataset) {
+    public Dataset<Row> get(final Dataset<Row> dataset) throws StreamingQueryException {
         final String journalDBName;
         if (!config.hasPath(journaldbNameConfigItem)) {
             LOGGER.info("Using default journaldb name <{}>", "journaldb");
@@ -81,11 +88,19 @@ public final class TeragrepEpochMigrationStep extends AbstractStep {
                             journalDBName
                     );
         }
-        EpochMigrationForeachPartitionFunction migrationFunction = new EpochMigrationForeachPartitionFunction(
+        final EpochMigrationForeachPartitionFunction migrationFunction = new EpochMigrationForeachPartitionFunction(
                 config,
                 journalDBName
         );
-        dataset.foreachPartition(migrationFunction);
+        final DataStreamWriter<Row> rowDataStreamWriter = dataset.writeStream().foreachBatch((ds, id) -> {
+            ds.foreachPartition(migrationFunction);
+        });
+
+        final StreamingQuery sq = catCtx
+                .getInternalStreamingQueryListener()
+                .registerQuery(String.valueOf(UUID.randomUUID()), rowDataStreamWriter);
+        sq.awaitTermination();
+
         return dataset;
 
     }
