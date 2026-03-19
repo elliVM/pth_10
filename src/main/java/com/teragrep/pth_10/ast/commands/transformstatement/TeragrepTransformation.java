@@ -82,6 +82,7 @@ import org.w3c.dom.Document;
 
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
+import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.Collections;
@@ -689,7 +690,7 @@ public class TeragrepTransformation extends DPLParserBaseVisitor<Node> {
                         StructField.apply("_time", DataTypes.TimestampType, false, new MetadataBuilder().build()),
                         StructField.apply("_raw", DataTypes.StringType, false, new MetadataBuilder().build())
                 }), Collections.singletonList(new Object[] {
-                        Instant.now(), "Epoch migration batch completed."
+                        Timestamp.from(Instant.now()), "Epoch migration completed."
                 }), catCtx)
         );
         return new StepListNode(Arrays.asList(epochMigrationStep, completedResultStep));

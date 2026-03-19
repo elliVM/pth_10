@@ -48,8 +48,10 @@ package com.teragrep.pth_10.steps.teragrep.migrate;
 import com.teragrep.functions.dpf_02.AbstractStep;
 import com.teragrep.pth_10.ast.DPLParserCatalystContext;
 import com.typesafe.config.Config;
+import org.apache.spark.sql.Column;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
+import org.apache.spark.sql.functions;
 import org.apache.spark.sql.streaming.DataStreamWriter;
 import org.apache.spark.sql.streaming.StreamingQuery;
 import org.apache.spark.sql.streaming.StreamingQueryException;
@@ -88,21 +90,26 @@ public final class TeragrepEpochMigrationStep extends AbstractStep {
                             journalDBName
                     );
         }
-        final EpochMigrationForeachPartitionFunction migrationFunction = new EpochMigrationForeachPartitionFunction(
-                config,
-                journalDBName
-        );
-        final DataStreamWriter<Row> rowDataStreamWriter = dataset.writeStream().foreachBatch((ds, id) -> {
-            ds.foreachPartition(migrationFunction);
-        });
-
-        final StreamingQuery sq = catCtx
+        final Column timeCol = functions.col("_time");
+        final Column rawCol = functions.col("_raw");
+        final Column partitionCol = functions.col("partition");
+        final DataStreamWriter<Row> dataStreamWriter = dataset
+                .select(timeCol, rawCol, partitionCol)
+                .writeStream()
+                .foreachBatch((ds, id) -> {
+                    final EpochMigrationForeachPartitionFunction migrationFunction = new EpochMigrationForeachPartitionFunction(
+                            config,
+                            journalDBName
+                    );
+                    ds.foreachPartition(migrationFunction);
+                });
+        final String streamingQueryName = "epoch-migration-stream-" + UUID.randomUUID();
+        final StreamingQuery streamingQuery = catCtx
                 .getInternalStreamingQueryListener()
-                .registerQuery(String.valueOf(UUID.randomUUID()), rowDataStreamWriter);
-        sq.awaitTermination();
+                .registerQuery(streamingQueryName, dataStreamWriter);
+        streamingQuery.awaitTermination();
 
         return dataset;
-
     }
 
     @Override

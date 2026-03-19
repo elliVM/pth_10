@@ -176,7 +176,7 @@ public final class EpochMigrationStepTest {
                     .collect(Collectors.toList());
             Assertions.assertEquals(1, resultPrint.size());
             final String result = resultPrint.get(0);
-            final String expected = "Epoch migration batch completed.";
+            final String expected = "Epoch migration completed.";
             Assertions.assertEquals(expected, result);
         });
     }
